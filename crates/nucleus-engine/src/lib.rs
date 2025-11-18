@@ -21,16 +21,21 @@ pub mod query;
 /// Error types
 pub mod error;
 
+/// Storage backend for persistence
+pub mod storage;
+
 // Re-export commonly used types
 pub use engine::LedgerEngine;
-pub use config::LedgerConfig;
+pub use config::{LedgerConfig, StorageConfig, ConfigOptions};
 pub use error::EngineError;
 pub use query::{QueryFilters, QueryResult};
+pub use storage::{StorageBackend, StorageError, StorageResult};
+
+#[cfg(not(target_arch = "wasm32"))]
+pub use storage::SqliteStorage;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_basic_setup() {
         // Basic smoke test

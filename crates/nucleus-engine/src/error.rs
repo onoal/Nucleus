@@ -34,6 +34,10 @@ pub enum EngineError {
     /// Invalid query
     #[error("Invalid query: {0}")]
     InvalidQuery(String),
+    
+    /// Storage error
+    #[error("Storage error: {0}")]
+    Storage(#[from] crate::storage::StorageError),
 }
 
 /// Result type alias for convenience

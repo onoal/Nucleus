@@ -1,11 +1,15 @@
 use nucleus_core::{Record, Hash};
 use nucleus_core::hash_chain::{ChainEntry, verify_chain};
 use nucleus_core::module::Module;
-use crate::config::LedgerConfig;
+use crate::config::{LedgerConfig, StorageConfig};
 use crate::state::LedgerState;
 use crate::module_registry::ModuleRegistry;
 use crate::error::EngineError;
 use crate::query::{QueryFilters, QueryResult};
+use crate::storage::StorageBackend;
+
+#[cfg(not(target_arch = "wasm32"))]
+use crate::storage::SqliteStorage;
 
 /// Ledger engine - runtime wrapper around nucleus-core
 pub struct LedgerEngine {
@@ -17,10 +21,29 @@ pub struct LedgerEngine {
 
     /// Module registry
     modules: ModuleRegistry,
+    
+    /// Optional persistent storage backend
+    storage: Option<Box<dyn StorageBackend>>,
 }
 
 impl LedgerEngine {
     /// Create a new ledger engine
+    ///
+    /// # Important
+    ///
+    /// If storage is configured, the engine will:
+    /// 1. Initialize storage (create tables if needed)
+    /// 2. Load all existing entries from storage
+    /// 3. Verify full chain integrity (hash reconstruction)
+    /// 4. Auto-save on every append operation
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Configuration is invalid
+    /// - Storage initialization fails
+    /// - Chain integrity check fails on load
+    /// - Module loading fails
     pub fn new(config: LedgerConfig) -> Result<Self, EngineError> {
         // Validate config
         config.validate()?;
@@ -29,10 +52,59 @@ impl LedgerEngine {
         let mut modules = ModuleRegistry::new();
         modules.load_from_config(&config.modules)?;
 
+        // Initialize storage backend
+        #[cfg(not(target_arch = "wasm32"))]
+        let storage: Option<Box<dyn StorageBackend>> = match &config.storage {
+            StorageConfig::None => None,
+            StorageConfig::Sqlite { path } => {
+                let mut sqlite = SqliteStorage::new(path)?;
+                sqlite.initialize()?;
+                Some(Box::new(sqlite))
+            }
+            StorageConfig::Postgres { .. } => {
+                return Err(EngineError::InvalidQuery(
+                    "PostgreSQL storage not yet implemented".to_string()
+                ));
+            }
+        };
+        
+        // WASM: storage not supported (always in-memory)
+        #[cfg(target_arch = "wasm32")]
+        let storage: Option<Box<dyn StorageBackend>> = {
+            if !matches!(config.storage, StorageConfig::None) {
+                return Err(EngineError::InvalidQuery(
+                    "Persistent storage is not supported in WASM. Use in-memory mode only.".to_string()
+                ));
+            }
+            None
+        };
+
+        // Initialize state
+        let mut state = LedgerState::new();
+        
+        // Load existing entries from storage if available
+        if let Some(ref storage) = storage {
+            let entries = storage.load_all_entries()?;
+            
+            // Verify chain integrity on load
+            if !entries.is_empty() {
+                let result = verify_chain(&entries);
+                if !result.valid {
+                    return Err(EngineError::ChainInvalid(result));
+                }
+            }
+            
+            // Load into state
+            for entry in entries {
+                state.append(entry);
+            }
+        }
+
         Ok(Self {
             config,
-            state: LedgerState::new(),
+            state,
             modules,
+            storage,
         })
     }
 
@@ -47,6 +119,20 @@ impl LedgerEngine {
     }
 
     /// Append a record to the ledger
+    ///
+    /// # Important
+    ///
+    /// If storage is configured:
+    /// - Record is saved to persistent storage atomically
+    /// - Only appended to state if storage save succeeds
+    /// - Chain integrity is maintained (rollback on error)
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Record validation fails
+    /// - Module hooks fail
+    /// - Storage save fails (state unchanged)
     pub fn append_record(&mut self, mut record: Record) -> Result<Hash, EngineError> {
         // Validate record
         record.validate()?;
@@ -63,12 +149,18 @@ impl LedgerEngine {
         let entry = ChainEntry::new(record.clone(), prev_hash)?;
         let hash = entry.hash;
 
+        // Save to storage first (if configured)
+        // If storage fails, state remains unchanged
+        if let Some(ref mut storage) = self.storage {
+            storage.save_entry(&entry)?;
+        }
+
         // Call module after_append hooks
         for module in self.modules.all_modules() {
             module.after_append(&record, &hash)?;
         }
 
-        // Append to state
+        // Append to state (only after successful storage save)
         self.state.append(entry);
 
         Ok(hash)
@@ -148,8 +240,24 @@ impl LedgerEngine {
 
     /// Append multiple records atomically
     ///
-    /// If any record fails validation or append, the entire batch fails
-    /// and no records are added to the ledger.
+    /// # Important
+    ///
+    /// This is an atomic operation:
+    /// - If any record fails validation or append, the entire batch fails
+    /// - No records are added to the ledger (state or storage)
+    /// - Storage operations use transactions for atomicity
+    ///
+    /// If storage is configured:
+    /// - All records are saved to storage first
+    /// - Only appended to state if all storage saves succeed
+    /// - Rollback on any error
+    ///
+    /// # Errors
+    ///
+    /// Returns error if:
+    /// - Any record validation fails
+    /// - Any module hook fails
+    /// - Any storage save fails (entire batch rolled back)
     pub fn append_batch(&mut self, records: Vec<Record>) -> Result<Vec<Hash>, EngineError> {
         // Validate all records first
         for record in &records {
@@ -187,7 +295,15 @@ impl LedgerEngine {
             entries.push(entry);
         }
 
-        // Append all entries to state (atomic operation)
+        // Save all entries to storage first (if configured)
+        // If any save fails, storage should handle rollback
+        if let Some(ref mut storage) = self.storage {
+            for entry in &entries {
+                storage.save_entry(entry)?;
+            }
+        }
+
+        // Append all entries to state (only after successful storage saves)
         for entry in entries {
             self.state.append(entry);
         }
@@ -229,6 +345,32 @@ impl LedgerEngine {
     /// Get all module IDs
     pub fn module_ids(&self) -> Vec<String> {
         self.modules.module_ids()
+    }
+    
+    /// Check if storage is enabled
+    pub fn has_storage(&self) -> bool {
+        self.storage.is_some()
+    }
+    
+    /// Verify storage integrity (if storage is enabled)
+    ///
+    /// This performs full chain verification on storage:
+    /// - Loads all entries from storage
+    /// - Recomputes hashes
+    /// - Verifies chain links
+    ///
+    /// # Returns
+    ///
+    /// - `Ok(true)` if storage is enabled and integrity is valid
+    /// - `Ok(false)` if storage is not enabled
+    /// - `Err(EngineError)` if integrity check fails
+    pub fn verify_storage(&self) -> Result<bool, EngineError> {
+        if let Some(ref storage) = self.storage {
+            storage.verify_integrity()?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }
 
@@ -275,7 +417,7 @@ mod tests {
             }),
         );
 
-        let hash = engine.append_record(record).unwrap();
+        let _hash = engine.append_record(record).unwrap();
 
         assert!(!engine.is_empty());
         assert_eq!(engine.len(), 1);

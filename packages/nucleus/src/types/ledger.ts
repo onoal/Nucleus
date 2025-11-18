@@ -3,6 +3,17 @@ import type { BackendConfig } from "./backend";
 import type { LedgerRecord, QueryFilters, QueryResult } from "./record";
 
 /**
+ * Storage configuration
+ *
+ * **Important**: Storage is only supported on native targets (Node.js with Rust backend).
+ * WASM targets (browser) only support in-memory mode.
+ */
+export type StorageConfig =
+  | { type: "none" } // In-memory only
+  | { type: "sqlite"; path: string } // SQLite (native only)
+  | { type: "postgres"; connectionString: string }; // PostgreSQL (future, native only)
+
+/**
  * Ledger configuration
  */
 export interface LedgerConfig {
@@ -25,6 +36,18 @@ export interface LedgerConfig {
    * Optional configuration options
    */
   options?: LedgerOptions;
+
+  /**
+   * Storage configuration
+   *
+   * Default: { type: "none" } (in-memory only)
+   *
+   * **Important**:
+   * - SQLite/PostgreSQL storage only works on native targets (Node.js)
+   * - WASM (browser) only supports in-memory mode
+   * - For browser persistence, consider IndexedDB wrapper (future)
+   */
+  storage?: StorageConfig;
 }
 
 /**
@@ -100,4 +123,32 @@ export interface Ledger {
    * Get latest entry hash
    */
   latestHash(): Promise<string | null>;
+
+  /**
+   * Check if persistent storage is enabled
+   *
+   * Returns true if the ledger has persistent storage configured
+   * (SQLite, PostgreSQL, etc.), false if in-memory only.
+   *
+   * **Note**: Always returns false in WASM (browser) environments.
+   */
+  hasStorage(): Promise<boolean>;
+
+  /**
+   * Verify storage integrity (if storage is enabled)
+   *
+   * This performs full chain verification on persistent storage:
+   * - Loads all entries from storage
+   * - Recomputes hashes
+   * - Verifies chain links
+   *
+   * Returns:
+   * - `false` if storage is not enabled
+   * - `true` if storage is enabled and integrity is valid
+   *
+   * Throws if integrity check fails.
+   *
+   * **Note**: Always returns false in WASM (browser) environments.
+   */
+  verifyStorage(): Promise<boolean>;
 }

@@ -190,5 +190,32 @@ impl WasmLedger {
         serde_wasm_bindgen::to_value(&json)
             .map_err(|e| JsValue::from_str(&format!("WASM bindgen error: {}", e)))
     }
+    
+    /// Check if persistent storage is enabled
+    ///
+    /// Returns true if the ledger has persistent storage configured
+    /// (SQLite, PostgreSQL, etc.), false if in-memory only.
+    #[wasm_bindgen]
+    pub fn has_storage(&self) -> bool {
+        self.inner.has_storage()
+    }
+    
+    /// Verify storage integrity (if storage is enabled)
+    ///
+    /// This performs full chain verification on persistent storage:
+    /// - Loads all entries from storage
+    /// - Recomputes hashes
+    /// - Verifies chain links
+    ///
+    /// Returns Ok if:
+    /// - Storage is not enabled (returns false)
+    /// - Storage is enabled and integrity is valid (returns true)
+    ///
+    /// Returns Err if integrity check fails.
+    #[wasm_bindgen]
+    pub fn verify_storage(&self) -> Result<bool, JsValue> {
+        self.inner.verify_storage()
+            .map_err(|e| JsValue::from_str(&format!("Storage verify error: {}", e)))
+    }
 }
 

@@ -12,6 +12,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rusqlite = { version = "0.30", features = ["bundled"] }
+
 [dev-dependencies]
 criterion = "0.5"
 

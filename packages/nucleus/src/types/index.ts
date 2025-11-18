@@ -27,4 +27,9 @@ export type {
   HttpBackendConfig,
 } from "./backend";
 
-export type { LedgerConfig, LedgerOptions, Ledger } from "./ledger";
+export type {
+  LedgerConfig,
+  LedgerOptions,
+  Ledger,
+  StorageConfig,
+} from "./ledger";

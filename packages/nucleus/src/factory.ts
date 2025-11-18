@@ -66,4 +66,12 @@ class LedgerImpl implements Ledger {
   async latestHash(): Promise<string | null> {
     return this.backend.latestHash();
   }
+
+  async hasStorage(): Promise<boolean> {
+    return this.backend.hasStorage();
+  }
+
+  async verifyStorage(): Promise<boolean> {
+    return this.backend.verifyStorage();
+  }
 }

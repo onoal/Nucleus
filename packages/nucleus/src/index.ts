@@ -16,3 +16,11 @@ export { LedgerBuilder, ledgerBuilder } from "./builder";
 
 // Re-export module helpers
 export { assetModule, proofModule } from "./modules";
+
+// Re-export storage helpers
+export {
+  inMemoryStorage,
+  sqliteStorage,
+  postgresStorage,
+  autoStorage,
+} from "./helpers/storage";

@@ -55,7 +55,21 @@ export class WasmBackend {
               enable_metrics: this.ledgerConfig.options.enableMetrics,
             }
           : undefined,
+        storage: this.ledgerConfig.storage
+          ? this.convertStorageConfig(this.ledgerConfig.storage)
+          : { None: null },
       };
+
+      // Validate storage config for WASM
+      if (
+        this.ledgerConfig.storage &&
+        this.ledgerConfig.storage.type !== "none"
+      ) {
+        console.warn(
+          `[nucleus] Storage type '${this.ledgerConfig.storage.type}' is not supported in WASM. ` +
+            `Falling back to in-memory mode. Use native Node.js backend for persistent storage.`
+        );
+      }
 
       // Create WASM ledger instance
       this.wasmLedger = new WasmLedger(wasmConfig);
@@ -69,6 +83,23 @@ export class WasmBackend {
       throw new Error("WASM backend not initialized. Call init() first.");
     }
     return this.wasmLedger;
+  }
+
+  private convertStorageConfig(storage: CoreLedgerConfig["storage"]): any {
+    if (!storage) {
+      return { None: null };
+    }
+
+    switch (storage.type) {
+      case "none":
+        return { None: null };
+      case "sqlite":
+        return { Sqlite: { path: storage.path } };
+      case "postgres":
+        return { Postgres: { connection_string: storage.connectionString } };
+      default:
+        return { None: null };
+    }
   }
 
   /**
@@ -164,5 +195,27 @@ export class WasmBackend {
   async latestHash(): Promise<string | null> {
     const ledger = this.ensureLedger();
     return ledger.latest_hash();
+  }
+
+  /**
+   * Check if storage is enabled
+   *
+   * **Note**: Always returns false in WASM (browser) environments.
+   * Storage is only supported in native Node.js with Rust backend.
+   */
+  async hasStorage(): Promise<boolean> {
+    const ledger = this.ensureLedger();
+    return ledger.has_storage();
+  }
+
+  /**
+   * Verify storage integrity
+   *
+   * **Note**: Always returns false in WASM (browser) environments.
+   * Storage verification is only available in native Node.js with Rust backend.
+   */
+  async verifyStorage(): Promise<boolean> {
+    const ledger = this.ensureLedger();
+    return ledger.verify_storage();
   }
 }

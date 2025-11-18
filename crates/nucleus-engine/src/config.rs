@@ -1,6 +1,26 @@
 use nucleus_core::module::ModuleConfig;
 use serde::{Deserialize, Serialize};
 
+/// Storage configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum StorageConfig {
+    /// No persistence (in-memory only)
+    None,
+    
+    /// SQLite storage
+    Sqlite {
+        /// Path to SQLite database file
+        path: String,
+    },
+    
+    /// PostgreSQL storage (future)
+    #[allow(dead_code)]
+    Postgres {
+        /// PostgreSQL connection string
+        connection_string: String,
+    },
+}
+
 /// Ledger engine configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LedgerConfig {
@@ -12,6 +32,9 @@ pub struct LedgerConfig {
 
     /// Optional configuration
     pub options: Option<ConfigOptions>,
+    
+    /// Storage configuration
+    pub storage: StorageConfig,
 }
 
 /// Optional configuration options
@@ -28,21 +51,33 @@ pub struct ConfigOptions {
 }
 
 impl LedgerConfig {
-    /// Create a new ledger config
+    /// Create a new ledger config (in-memory only)
     pub fn new(id: String) -> Self {
         Self {
             id,
             modules: Vec::new(),
             options: None,
+            storage: StorageConfig::None,
         }
     }
 
-    /// Create a new ledger config with modules
+    /// Create a new ledger config with modules (in-memory only)
     pub fn with_modules(id: String, modules: Vec<ModuleConfig>) -> Self {
         Self {
             id,
             modules,
             options: None,
+            storage: StorageConfig::None,
+        }
+    }
+    
+    /// Create a new ledger config with SQLite storage
+    pub fn with_sqlite_storage(id: String, path: impl Into<String>) -> Self {
+        Self {
+            id,
+            modules: Vec::new(),
+            options: None,
+            storage: StorageConfig::Sqlite { path: path.into() },
         }
     }
 
@@ -55,6 +90,12 @@ impl LedgerConfig {
     /// Set configuration options
     pub fn with_options(mut self, options: ConfigOptions) -> Self {
         self.options = Some(options);
+        self
+    }
+    
+    /// Set storage configuration
+    pub fn with_storage(mut self, storage: StorageConfig) -> Self {
+        self.storage = storage;
         self
     }
 
