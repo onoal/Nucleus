@@ -217,5 +217,46 @@ impl WasmLedger {
         self.inner.verify_storage()
             .map_err(|e| JsValue::from_str(&format!("Storage verify error: {}", e)))
     }
+    
+    /// List all registered module IDs
+    ///
+    /// Returns an array of module IDs that are loaded in this ledger.
+    #[wasm_bindgen]
+    pub fn list_modules(&self) -> JsValue {
+        let ids = self.inner.module_ids();
+        serde_wasm_bindgen::to_value(&ids).unwrap_or(JsValue::NULL)
+    }
+    
+    /// Get module metadata (ID, version, state)
+    ///
+    /// Returns detailed information about all loaded modules including
+    /// their current lifecycle state.
+    #[wasm_bindgen]
+    pub fn get_module_metadata(&self) -> JsValue {
+        let meta = self.inner.module_metadata();
+        
+        // Convert to JS-friendly format
+        let js_meta: Vec<serde_json::Value> = meta.iter().map(|m| {
+            serde_json::json!({
+                "id": m.id,
+                "version": m.version,
+                "state": format!("{:?}", m.state)
+            })
+        }).collect();
+        
+        serde_wasm_bindgen::to_value(&js_meta).unwrap_or(JsValue::NULL)
+    }
+    
+    /// Get module state by ID
+    ///
+    /// Returns the current lifecycle state of a specific module.
+    /// Returns null if module not found.
+    #[wasm_bindgen]
+    pub fn get_module_state(&self, id: &str) -> JsValue {
+        match self.inner.module_state(id) {
+            Some(state) => JsValue::from_str(&format!("{:?}", state)),
+            None => JsValue::NULL,
+        }
+    }
 }
 

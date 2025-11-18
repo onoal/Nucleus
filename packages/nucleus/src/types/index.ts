@@ -32,4 +32,6 @@ export type {
   LedgerOptions,
   Ledger,
   StorageConfig,
+  ModuleMetadata,
+  ModuleState,
 } from "./ledger";

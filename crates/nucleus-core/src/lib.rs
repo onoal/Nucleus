@@ -24,6 +24,9 @@ pub mod hash_chain;
 /// Module system
 pub mod module;
 
+/// Request context for authentication
+pub mod context;
+
 // Re-export commonly used types
 pub use record::Record;
 pub use hash::Hash;
@@ -31,6 +34,7 @@ pub use error::CoreError;
 pub use serialization::{serialize_canonical, compute_hash};
 pub use hash_chain::{ChainEntry, ChainVerificationResult, verify_chain, ChainError};
 pub use module::{Module, ModuleConfig};
+pub use context::{RequestContext, ContextError};
 
 #[cfg(test)]
 mod tests {

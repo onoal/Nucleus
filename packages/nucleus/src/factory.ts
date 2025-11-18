@@ -29,7 +29,16 @@ export async function createLedger(config: LedgerConfig): Promise<Ledger> {
  * Ledger implementation
  */
 class LedgerImpl implements Ledger {
-  constructor(public readonly id: string, private backend: WasmBackend) {}
+  public readonly modules: Ledger["modules"];
+
+  constructor(public readonly id: string, private backend: WasmBackend) {
+    // Create modules namespace
+    this.modules = {
+      list: () => this.backend.listModules(),
+      metadata: () => this.backend.getModuleMetadata(),
+      getState: (id: string) => this.backend.getModuleState(id),
+    };
+  }
 
   async append(record: LedgerRecord): Promise<string> {
     return this.backend.append(record);

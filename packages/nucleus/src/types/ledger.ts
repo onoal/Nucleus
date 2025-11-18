@@ -151,4 +151,73 @@ export interface Ledger {
    * **Note**: Always returns false in WASM (browser) environments.
    */
   verifyStorage(): Promise<boolean>;
+
+  /**
+   * Modules namespace for module operations (readonly)
+   *
+   * Access module information and state.
+   * All operations are readonly - modules are managed by the Rust engine.
+   */
+  readonly modules: {
+    /**
+     * List all registered module IDs
+     *
+     * @returns Array of module IDs (e.g., ["proof", "asset"])
+     *
+     * @example
+     * ```ts
+     * const moduleIds = await ledger.modules.list();
+     * console.log(moduleIds); // ["proof", "asset"]
+     * ```
+     */
+    list(): Promise<string[]>;
+
+    /**
+     * Get module metadata (ID, version, state)
+     *
+     * @returns Array of module metadata objects
+     *
+     * @example
+     * ```ts
+     * const metadata = await ledger.modules.metadata();
+     * console.log(metadata);
+     * // [
+     * //   { id: "proof", version: "1.0.0", state: "Started" },
+     * //   { id: "asset", version: "1.0.0", state: "Started" }
+     * // ]
+     * ```
+     */
+    metadata(): Promise<ModuleMetadata[]>;
+
+    /**
+     * Get module state by ID
+     *
+     * @param id - Module ID
+     * @returns Module state or null if not found
+     *
+     * @example
+     * ```ts
+     * const state = await ledger.modules.getState("proof");
+     * console.log(state); // "Started"
+     * ```
+     */
+    getState(id: string): Promise<ModuleState | null>;
+  };
 }
+
+/**
+ * Module metadata
+ */
+export interface ModuleMetadata {
+  /** Module ID */
+  id: string;
+  /** Module version */
+  version: string;
+  /** Current lifecycle state */
+  state: ModuleState;
+}
+
+/**
+ * Module lifecycle state
+ */
+export type ModuleState = "Registered" | "Initialized" | "Started" | "Stopped";

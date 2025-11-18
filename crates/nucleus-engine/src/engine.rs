@@ -48,9 +48,13 @@ impl LedgerEngine {
         // Validate config
         config.validate()?;
 
-        // Initialize module registry
-        let mut modules = ModuleRegistry::new();
+        // Initialize module registry with ledger ID
+        let mut modules = ModuleRegistry::with_ledger_id(config.id.clone());
         modules.load_from_config(&config.modules)?;
+        
+        // Initialize and start modules
+        modules.init_all()?;
+        modules.start_all()?;
 
         // Initialize storage backend
         #[cfg(not(target_arch = "wasm32"))]
@@ -347,6 +351,16 @@ impl LedgerEngine {
         self.modules.module_ids()
     }
     
+    /// Get module metadata (ID, version, state)
+    pub fn module_metadata(&self) -> Vec<crate::module_registry::ModuleMeta> {
+        self.modules.get_all_meta()
+    }
+    
+    /// Get module state by ID
+    pub fn module_state(&self, id: &str) -> Option<nucleus_core::module::ModuleState> {
+        self.modules.get_state(id)
+    }
+    
     /// Check if storage is enabled
     pub fn has_storage(&self) -> bool {
         self.storage.is_some()
@@ -371,6 +385,14 @@ impl LedgerEngine {
         } else {
             Ok(false)
         }
+    }
+}
+
+/// Cleanup on engine drop
+impl Drop for LedgerEngine {
+    fn drop(&mut self) {
+        // Stop all modules (best-effort cleanup)
+        self.modules.stop_all();
     }
 }
 

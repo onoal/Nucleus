@@ -30,6 +30,7 @@ pub use config::{LedgerConfig, StorageConfig, ConfigOptions};
 pub use error::EngineError;
 pub use query::{QueryFilters, QueryResult};
 pub use storage::{StorageBackend, StorageError, StorageResult};
+pub use module_registry::{ModuleRegistry, ModuleMeta};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use storage::SqliteStorage;

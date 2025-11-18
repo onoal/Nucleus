@@ -218,4 +218,28 @@ export class WasmBackend {
     const ledger = this.ensureLedger();
     return ledger.verify_storage();
   }
+
+  /**
+   * List all module IDs
+   */
+  async listModules(): Promise<string[]> {
+    const ledger = this.ensureLedger();
+    return ledger.list_modules();
+  }
+
+  /**
+   * Get module metadata
+   */
+  async getModuleMetadata(): Promise<any[]> {
+    const ledger = this.ensureLedger();
+    return ledger.get_module_metadata();
+  }
+
+  /**
+   * Get module state by ID
+   */
+  async getModuleState(id: string): Promise<string | null> {
+    const ledger = this.ensureLedger();
+    return ledger.get_module_state(id);
+  }
 }
