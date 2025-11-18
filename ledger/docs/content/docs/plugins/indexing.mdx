@@ -1,0 +1,99 @@
+---
+title: Indexing
+description: Create secondary indexes for faster lookups
+---
+
+# Indexing Plugin
+
+The Indexing Plugin creates secondary indexes for faster lookups. Works best with the memory adapter.
+
+## Installation
+
+```bash
+pnpm add @onoal/registry-plugins
+```
+
+## Usage
+
+```typescript
+import { createIndexingPlugin } from "@onoal/registry-plugins";
+
+const registry = createRegistry({
+  adapter: memoryAdapter(), // Works best with memory adapter
+  plugins: [
+    createIndexingPlugin({
+      indexByOid: true,
+      indexByCategory: true,
+      indexByType: true,
+    }),
+  ],
+});
+```
+
+## Features
+
+- **OID-based Indexing**: Index by issuerOid, orgOid, appOid
+- **Category-based Indexing**: Index by category
+- **Type-based Indexing**: Index by type/slug
+- **Automatic Maintenance**: Indexes are automatically maintained
+
+## Configuration
+
+### indexByOid (optional)
+
+Create indexes for OID-based lookups (issuerOid, orgOid, appOid).
+
+```typescript
+indexByOid: true;
+```
+
+### indexByCategory (optional)
+
+Create indexes for category-based lookups.
+
+```typescript
+indexByCategory: true;
+```
+
+### indexByType (optional)
+
+Create indexes for type-based lookups.
+
+```typescript
+indexByType: true;
+```
+
+## How It Works
+
+The plugin wraps adapter methods to maintain indexes:
+
+- **On Set**: Adds entry to relevant indexes
+- **On Delete**: Removes entry from indexes
+- **On List**: Uses indexes for faster filtering (when possible)
+
+## Performance
+
+With indexing enabled:
+
+- **OID Lookups**: O(1) instead of O(n)
+- **Category Filtering**: O(1) instead of O(n)
+- **Type Filtering**: O(1) instead of O(n)
+
+## Limitations
+
+- **Memory Adapter Only**: Works best with memory adapter
+- **Database Adapters**: PostgreSQL and SQLite adapters already have indexes via schema
+- **Memory Usage**: Indexes consume additional memory
+
+## Example
+
+```typescript
+const plugin = createIndexingPlugin({
+  indexByOid: true,
+  indexByCategory: true,
+});
+
+// After registering entries, lookups are faster
+const entries = await service.list({ orgOid: "oid:onoal:org:festival" });
+// Uses OID index for O(1) lookup instead of O(n) scan
+```

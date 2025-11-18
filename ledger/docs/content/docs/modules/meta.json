@@ -1,0 +1,6 @@
+{
+  "title": "Modules",
+  "description": "Built-in modules for Ledger Framework",
+  "defaultOpen": false,
+  "pages": ["proof", "asset", "connect"]
+}

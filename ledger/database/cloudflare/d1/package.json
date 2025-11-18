@@ -1,0 +1,40 @@
+{
+  "name": "@onoal/ledger-database-cloudflare-d1",
+  "version": "0.1.0",
+  "description": "Cloudflare D1 database for Onoal Ledger",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": [
+    "onoal",
+    "ledger",
+    "adapter",
+    "cloudflare",
+    "d1",
+    "workers"
+  ],
+  "author": "Onoal",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/onoal/onoal-os.git",
+    "directory": "ledger/database/cloudflare/d1"
+  },
+  "dependencies": {
+    "@onoal/ledger-core": "workspace:*",
+    "drizzle-orm": "^0.29.5"
+  },
+  "peerDependencies": {
+    "@cloudflare/workers-types": "^4.20240101.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

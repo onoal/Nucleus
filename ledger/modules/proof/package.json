@@ -1,0 +1,40 @@
+{
+  "name": "@onoal/ledger-module-proof",
+  "version": "0.1.0",
+  "description": "Proof module for Onoal Ledger (Medusa.js pattern)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "keywords": [
+    "onoal",
+    "ledger",
+    "module",
+    "proof"
+  ],
+  "author": "Onoal",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/onoal/onoal-os.git",
+    "directory": "ledger/modules/proof"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@onoal/ledger-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.9.2",
+    "vitest": "^1.0.0"
+  }
+}

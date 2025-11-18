@@ -1,0 +1,222 @@
+---
+title: API Server
+description: Expose your ledger via REST API
+---
+
+# API Server
+
+Ledger Framework includes an API server that automatically exposes your ledger's routes via REST endpoints.
+
+## Creating an API Server
+
+```typescript
+import { createLedger, coreRoutesModule } from "@onoal/ledger-core";
+import { createLedgerServer } from "@onoal/ledger-core/server";
+import { sqliteAdapter } from "@onoal/ledger-database-sqlite";
+import { proofModule } from "@onoal/ledger-module-proof";
+
+const ledger = createLedger({
+  adapter: sqliteAdapter({ path: "./ledger.db" }),
+  modules: [
+    coreRoutesModule(), // Core routes (health, hash-root, verify, stats, etc.)
+    proofModule(),
+  ],
+});
+
+await ledger.initialize();
+
+const server = createLedgerServer(ledger);
+```
+
+## Using with Hono
+
+```typescript
+import { Hono } from "hono";
+import { createLedgerServer } from "@onoal/ledger-core/server";
+
+const app = new Hono();
+const ledgerServer = createLedgerServer(ledger);
+
+// Register routes
+for (const route of ledgerServer.routes) {
+  app.on(route.method, route.path, async (c) => {
+    const response = await route.handler(c.req.raw, ledger, {});
+    return response;
+  });
+}
+
+export default app;
+```
+
+## Using with Express
+
+```typescript
+import express from "express";
+import { createLedgerServer } from "@onoal/ledger-core/server";
+
+const app = express();
+app.use(express.json());
+
+const ledgerServer = createLedgerServer(ledger);
+
+// Register routes
+for (const route of ledgerServer.routes) {
+  app[route.method.toLowerCase()](route.path, async (req, res) => {
+    const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+    const request = new Request(url, {
+      method: req.method,
+      headers: req.headers as HeadersInit,
+      body:
+        req.method !== "GET" && req.method !== "HEAD"
+          ? JSON.stringify(req.body)
+          : undefined,
+    });
+
+    const response = await route.handler(request, ledger, {});
+    const data = await response.json();
+    res.status(response.status).json(data);
+  });
+}
+
+app.listen(3000);
+```
+
+## Using with Cloudflare Workers
+
+```typescript
+import { createLedgerServer } from "@onoal/ledger-core/server";
+import { d1Adapter } from "@onoal/ledger-database-cloudflare-d1";
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const ledger = createLedger({
+      adapter: d1Adapter(env.DB),
+      modules: [proofModule()],
+    });
+    await ledger.initialize();
+
+    const server = createLedgerServer(ledger);
+    return server.handleRequest(request);
+  },
+};
+```
+
+## Route Matching
+
+The API server automatically matches routes from modules:
+
+```typescript
+// Module defines route
+{
+  method: "POST",
+  path: "/ledger/submit",
+  handler: async (req, ledger, params) => { ... },
+}
+
+// Automatically available
+POST /ledger/submit
+```
+
+Routes support path parameters:
+
+```typescript
+{
+  method: "GET",
+  path: "/ledger/proof/:id",
+  handler: async (req, ledger, params) => {
+    const id = params.id; // Extracted from path
+    // ...
+  },
+}
+```
+
+## Authentication
+
+The API server supports optional authentication middleware:
+
+```typescript
+import {
+  createLedgerServer,
+  createAuthMiddleware,
+} from "@onoal/ledger-core/server";
+
+const server = createLedgerServer(ledger, {
+  auth: {
+    verifyConnectToken: async (token, env) => {
+      // Verify Connect token
+      return await verifyConnectToken(token, env);
+    },
+    verifySessionToken: async (token, env) => {
+      // Verify Session token (OIDC)
+      return await verifySessionToken(token, env);
+    },
+    verifyDpop: async (dpopProof, connectPayload, htm, htu) => {
+      // Verify DPoP proof
+      return await verifyDpop(dpopProof, connectPayload, htm, htu);
+    },
+    publicPaths: ["/health", "/ledger/stats", "/.well-known/jwks.json"],
+  },
+});
+```
+
+The authentication middleware extracts `requester_oid` from tokens and makes it available to route handlers via `params._requester_oid`.
+
+## Health Check
+
+A health check endpoint is available via the core routes module:
+
+```typescript
+GET /health
+
+// Response
+{
+  "ok": true,
+  "ts": 1234567890
+}
+```
+
+## Available Routes
+
+Routes are automatically registered from enabled modules:
+
+### Core Routes Module
+
+The `coreRoutesModule()` provides essential ledger endpoints:
+
+- `GET /health` - Health check
+- `GET /ledger/hash-root` - Get hash root of the chain
+- `GET /ledger/verify` - Verify chain integrity (query param: `limit`)
+- `GET /ledger/stats` - Get ledger statistics
+- `GET /ledger/status/:oid` - Get ledger status for an OID (requires auth)
+- `GET /.well-known/jwks.json` - JWKS endpoint for JWT verification
+
+### Proof Module Routes
+
+- `POST /ledger/submit` - Submit proof
+- `GET /ledger/proof/:id` - Get proof by ID
+- `GET /ledger/proofs` - Query proofs (requires `subject_oid` or `issuer_oid`)
+
+### Asset Module Routes
+
+- `POST /asset/issue` - Issue asset
+- `GET /asset/:id` - Get asset by ID
+- `GET /asset/list` - Query assets
+
+### Connect Module Routes
+
+- `POST /connect/grant` - Create connect grant
+- `GET /connect/grant/:id` - Get grant by ID
+- `GET /connect/grants` - Query grants
+
+## Examples
+
+See the [examples directory](https://github.com/onoal/onoal-os/tree/main/ledger/ledger-core/examples) for complete examples:
+
+- [Hono Server](https://github.com/onoal/onoal-os/tree/main/ledger/ledger-core/examples/hono-server)
+- [Express Server](https://github.com/onoal/onoal-os/tree/main/ledger/ledger-core/examples/express-server)
+- [Cloudflare Worker](https://github.com/onoal/onoal-os/tree/main/ledger/ledger-core/examples/cloudflare-worker)
+
+## Next Steps
+
+- [CLI Tool](/docs/cli) - Scaffold new projects
+- [Modules](/docs/modules) - Explore built-in modules

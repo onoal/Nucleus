@@ -1,0 +1,73 @@
+---
+title: Introduction
+description: Get started with Ledger Framework
+---
+
+# Ledger Framework
+
+**Standalone framework for building custom Onoal ledgers**
+
+The Ledger Framework is a modular, extensible framework for creating custom immutable ledgers for proofs, assets, and connect grants. It's designed to be standalone - you can build your own ledger without depending on the main Onoal ledger.
+
+## Why Ledger Framework?
+
+- **Standalone**: Build custom ledgers independently
+- **Modular**: Mix and match modules, adapters, and plugins
+- **Database Agnostic**: Use SQLite, PostgreSQL, or Cloudflare D1
+- **Type-Safe**: Full TypeScript support
+- **Edge-Ready**: Deploy to Cloudflare Workers or Node.js
+- **Developer Experience**: CLI tool, comprehensive docs, examples
+- **Immutable**: Hash chain integrity with cryptographic verification
+- **JWT Support**: Built-in JWT generation for proofs and assets
+
+## Quick Start
+
+```bash
+# Create a new ledger project
+npx create-onoal-ledger
+
+# Or install packages directly
+pnpm add @onoal/ledger-core
+pnpm add @onoal/ledger-module-proof
+pnpm add @onoal/ledger-database-sqlite
+```
+
+```typescript
+import { createLedger } from "@onoal/ledger-core";
+import { sqliteAdapter } from "@onoal/ledger-database-sqlite";
+import { proofModule } from "@onoal/ledger-module-proof";
+
+const ledger = createLedger({
+  adapter: sqliteAdapter({ path: "./ledger.db" }),
+  modules: [proofModule()],
+});
+
+await ledger.initialize();
+```
+
+## Architecture
+
+The Ledger Framework follows patterns from:
+
+- **BetterAuth** - Plugin system, adapter pattern, factory functions
+- **Medusa.js** - Module system, service container, dependency injection
+
+### Key Concepts
+
+- **Ledger**: Main instance that orchestrates modules, plugins, and adapters
+- **Modules**: Provide services and routes (e.g., Proof, Asset, Connect)
+- **Adapters**: Database abstraction (SQLite, PostgreSQL, D1)
+- **Plugins**: Extend functionality (validation, webhooks, indexing)
+- **Services**: Business logic for managing ledger entries
+- **Hash Chain**: Immutable chain of entries with cryptographic integrity
+- **JWT Generation**: Automatic JWT generation for proofs and assets
+
+## What's Next?
+
+- [Installation](/docs/installation) - Set up Ledger Framework
+- [Core Concepts](/docs/core-concepts) - Learn the fundamentals
+- [Modules](/docs/modules) - Explore built-in modules
+- [Adapters](/docs/adapters) - Choose your database backend
+- [Plugins](/docs/plugins) - Extend functionality
+- [API Server](/docs/api-server) - Expose your ledger via REST API
+- [CLI Tool](/docs/cli) - Scaffold new projects

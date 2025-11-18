@@ -1,0 +1,31 @@
+{
+  "name": "@onoal/nucleus-wasm",
+  "version": "0.1.0",
+  "description": "Nucleus Engine WASM bindings for browser and Node.js",
+  "main": "pkg/nucleus_wasm.js",
+  "types": "types/index.d.ts",
+  "files": [
+    "pkg",
+    "types"
+  ],
+  "scripts": {
+    "build": "./build.sh",
+    "test": "wasm-pack test --headless --firefox",
+    "test:node": "wasm-pack test --node"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/onoal/nucleus"
+  },
+  "keywords": [
+    "ledger",
+    "wasm",
+    "blockchain",
+    "nucleus"
+  ],
+  "author": "Onoal Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

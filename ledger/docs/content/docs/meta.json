@@ -1,0 +1,15 @@
+{
+  "pages": [
+    "index",
+    "installation",
+    "quick-start",
+    "core-concepts",
+    "modules",
+    "adapters",
+    "plugins",
+    "api-server",
+    "authentication",
+    "cli",
+    "client-sdk"
+  ]
+}

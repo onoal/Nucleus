@@ -1,0 +1,82 @@
+---
+title: Installation
+description: Install and set up Ledger Framework
+---
+
+# Installation
+
+## Prerequisites
+
+- Node.js >= 18
+- pnpm (recommended) or npm/yarn
+
+## Install Packages
+
+### Core Framework
+
+```bash
+pnpm add @onoal/ledger-core
+```
+
+### Modules
+
+```bash
+# Proof module
+pnpm add @onoal/ledger-module-proof
+
+# Asset module
+pnpm add @onoal/ledger-module-asset
+
+# Connect module
+pnpm add @onoal/ledger-module-connect
+```
+
+### Adapters
+
+Choose your database adapter:
+
+```bash
+# Node.js adapters (SQLite, PostgreSQL)
+pnpm add @onoal/ledger-database-sqlite
+
+# Cloudflare Workers adapter (D1)
+pnpm add @onoal/ledger-database-cloudflare-d1
+```
+
+### Plugins
+
+```bash
+pnpm add @onoal/ledger-plugins
+```
+
+## Using the CLI
+
+The easiest way to get started is using the CLI tool:
+
+```bash
+npx create-onoal-ledger
+```
+
+This will create a new ledger project with all dependencies configured.
+
+## Manual Setup
+
+If you prefer to set up manually:
+
+```typescript
+import { createLedger } from "@onoal/ledger-core";
+import { sqliteAdapter } from "@onoal/ledger-database-sqlite";
+import { proofModule, assetModule, connectModule } from "@onoal/ledger-modules";
+
+const ledger = createLedger({
+  adapter: sqliteAdapter({ path: "./ledger.db" }),
+  modules: [proofModule(), assetModule(), connectModule()],
+});
+
+await ledger.initialize();
+```
+
+## Next Steps
+
+- [Core Concepts](/docs/core-concepts) - Learn the fundamentals
+- [Quick Start Guide](/docs/quick-start) - Build your first ledger

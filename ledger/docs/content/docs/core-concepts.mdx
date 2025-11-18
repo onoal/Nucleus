@@ -1,0 +1,227 @@
+---
+title: Core Concepts
+description: Understand the fundamental concepts of Ledger Framework
+---
+
+# Core Concepts
+
+## Ledger
+
+The `Ledger` is the main instance that orchestrates modules, plugins, and adapters. It provides:
+
+- Service container for dependency injection
+- Module management
+- Plugin system
+- Adapter abstraction
+- Hash chain integrity
+- JWT generation
+
+```typescript
+const ledger = createLedger({
+  adapter: sqliteAdapter({ path: "./ledger.db" }),
+  modules: [proofModule()],
+  plugins: [webhookPlugin()],
+});
+
+await ledger.initialize();
+```
+
+## Modules
+
+Modules provide services and routes. They follow the Medusa.js pattern:
+
+- **Services**: Business logic classes
+- **Routes**: REST API endpoints
+- **Hooks**: Lifecycle hooks (load, start)
+
+```typescript
+const module = {
+  id: "proof",
+  services: {
+    proofService: ProofService,
+  },
+  routes: [
+    {
+      method: "POST",
+      path: "/ledger/submit",
+      handler: async (req, ledger, params) => {
+        const service = ledger.getService("proofService");
+        // ...
+      },
+    },
+  ],
+};
+```
+
+## Adapters
+
+Adapters abstract database operations. They implement a simple interface:
+
+```typescript
+interface LedgerAdapter {
+  id: string;
+  provider: "sqlite" | "postgres" | "d1";
+  db: LedgerDb;
+  migrate?: () => Promise<void>;
+}
+```
+
+Available adapters:
+
+- **SQLite**: Local development and small-scale deployments
+- **PostgreSQL**: Production deployments (Neon serverless)
+- **D1**: Cloudflare Workers deployments
+
+## Plugins
+
+Plugins extend functionality. They follow the BetterAuth pattern:
+
+```typescript
+const plugin = {
+  id: "webhook",
+  setup: async (ledger) => {
+    // Hook into services, modify behavior
+  },
+};
+```
+
+Available plugins:
+
+- **Webhook**: Send webhooks on ledger events
+- **Validation**: Validate entries before storage
+- **Indexing**: Create secondary indexes
+
+## Services
+
+Services contain business logic. They're registered in the service container:
+
+```typescript
+const service = ledger.getService<ProofService>("proofService");
+const entry = await service.createProof({ ... });
+```
+
+## Routes
+
+Routes are automatically registered from modules:
+
+```typescript
+// Module defines route
+{
+  method: "POST",
+  path: "/ledger/submit",
+  handler: async (req, ledger, params) => { ... },
+}
+
+// Automatically available via API server
+POST /ledger/submit
+```
+
+## Hash Chain
+
+The ledger maintains an immutable hash chain for integrity:
+
+- Each entry includes the hash of the previous entry
+- Chain integrity can be verified with `verifyChain()`
+- Checkpoints can be created for efficient verification
+
+```typescript
+// Verify chain integrity
+const isValid = await ledger.verifyChain();
+
+// Get chain tip
+const tip = await ledger.getTip();
+```
+
+## JWT Generation
+
+The ledger automatically generates JWTs for proofs and assets:
+
+- **Proof JWTs**: Include entry metadata and proof data
+- **Asset JWTs**: Include entry metadata and asset data
+- Signed with Ed25519 keys
+- 1 year expiration by default
+
+```typescript
+// Proof entry includes proof_jwt
+const entry = await ledger.append({
+  type: "proof",
+  // ...
+});
+
+// entry.proof_jwt contains the JWT
+```
+
+## Authentication
+
+The ledger supports optional authentication middleware for API routes:
+
+- **Connect Tokens**: DPoP-bound tokens with grant_id
+- **Session Tokens**: OIDC access tokens
+- **Dev Tokens**: Development tokens (format: `dev:oid:...`)
+- **API Keys**: Legacy API key support
+
+Authentication extracts `requester_oid` from tokens and makes it available to route handlers for ACL checks.
+
+```typescript
+import { createAuthMiddleware } from "@onoal/ledger-core";
+
+const authMiddleware = createAuthMiddleware({
+  verifyConnectToken: async (token, env) => {
+    // Verify Connect token
+  },
+  verifySessionToken: async (token, env) => {
+    // Verify Session token
+  },
+  publicPaths: ["/health", "/ledger/stats"],
+});
+```
+
+## Unified Access Layer (UAL)
+
+The ledger supports optional UAL integration for enterprise-level access control:
+
+- **ACL Grants**: Automatic grants when creating proofs, assets, or grants
+- **ACL Checks**: Authorization checks in queries and get operations
+- **ACL-aware Queries**: Filter results based on requester permissions
+
+```typescript
+// UAL is optional - framework works without it
+// But with UAL you get enterprise features
+
+const ual = ledger.getService<UnifiedAccessLayer>("ual");
+if (ual) {
+  // Grant access
+  await ual.grant([
+    {
+      resourceKind: "proof",
+      resourceId: entry.id,
+      principalOid: "oid:onoal:user:alice",
+      scope: "read",
+      grantedBy: "oid:onoal:org:identity",
+    },
+  ]);
+
+  // Check access
+  const hasAccess = await ual.check("oid:onoal:user:alice", "read", {
+    kind: "proof",
+    id: entry.id,
+  });
+}
+```
+
+## Idempotency
+
+All creation operations (proofs, assets, grants) support idempotency:
+
+- **Proofs**: Checked by `subject_oid`, `type`, `issuer_oid`, and `target`
+- **Assets**: Checked by `owner_oid`, `type`, and `issuer_oid`
+- **Grants**: Checked by `app_oid` and `subject_oid`
+
+If an entry already exists, the existing entry is returned (status 200) instead of creating a duplicate (status 201).
+
+## Next Steps
+
+- [Modules](/docs/modules) - Explore built-in modules
+- [Adapters](/docs/adapters) - Choose your database backend
+- [Plugins](/docs/plugins) - Extend functionality
+- [API Server](/docs/api-server) - Expose your ledger via REST API

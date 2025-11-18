@@ -1,0 +1,102 @@
+---
+title: Validation
+description: Validate registry entries before they are stored
+---
+
+# Validation Plugin
+
+The Validation Plugin validates registry entries before they are stored, throwing errors for invalid entries.
+
+## Installation
+
+```bash
+pnpm add @onoal/registry-plugins
+```
+
+## Usage
+
+```typescript
+import { createValidationPlugin } from "@onoal/registry-plugins";
+
+const registry = createRegistry({
+  plugins: [
+    createValidationPlugin({
+      validateAssetType: (entry) => {
+        if (!entry.typeId.startsWith("atp_")) {
+          throw new Error("Asset type ID must start with 'atp_'");
+        }
+        if (!entry.issuerOid.startsWith("oid:onoal:org:")) {
+          throw new Error("Issuer OID must be an org OID");
+        }
+      },
+      validateProofType: (entry) => {
+        if (!entry.type) {
+          throw new Error("Proof type is required");
+        }
+      },
+      validateApp: (entry) => {
+        if (!entry.appOid.startsWith("oid:onoal:app:")) {
+          throw new Error("App OID must start with 'oid:onoal:app:'");
+        }
+      },
+    }),
+  ],
+});
+```
+
+## Features
+
+- **Entry Validation**: Validate entries before storage
+- **Custom Rules**: Define custom validation rules per entry type
+- **Type-Safe**: Type-safe validation functions
+- **Error Handling**: Throws descriptive errors for invalid entries
+
+## Validation Functions
+
+### validateAssetType
+
+Validates asset type entries before registration or update.
+
+```typescript
+validateAssetType?: (entry: any) => void | Promise<void>;
+```
+
+### validateProofType
+
+Validates proof type entries before registration.
+
+```typescript
+validateProofType?: (entry: any) => void | Promise<void>;
+```
+
+### validateApp
+
+Validates app entries before registration.
+
+```typescript
+validateApp?: (entry: any) => void | Promise<void>;
+```
+
+## Example
+
+```typescript
+const plugin = createValidationPlugin({
+  validateAssetType: async (entry) => {
+    // Check format
+    if (!entry.typeId.startsWith("atp_")) {
+      throw new Error("Invalid asset type ID format");
+    }
+
+    // Check OID format
+    if (!entry.issuerOid.match(/^oid:onoal:org:/)) {
+      throw new Error("Invalid issuer OID format");
+    }
+
+    // Async validation (e.g., check external service)
+    const exists = await checkExternalService(entry.typeId);
+    if (exists) {
+      throw new Error("Asset type already exists");
+    }
+  },
+});
+```

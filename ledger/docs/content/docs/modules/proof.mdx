@@ -1,0 +1,225 @@
+---
+title: Proof Module
+description: Create and query proofs in the ledger
+---
+
+# Proof Module
+
+The Proof Module provides proof creation and querying functionality with automatic JWT generation.
+
+## Installation
+
+```bash
+pnpm add @onoal/ledger-module-proof
+```
+
+## Usage
+
+```typescript
+import { createLedger } from "@onoal/ledger-core";
+import { proofModule } from "@onoal/ledger-module-proof";
+
+const ledger = createLedger({
+  modules: [proofModule()],
+  // ...
+});
+```
+
+## Service
+
+Access the service via the ledger:
+
+```typescript
+const service = ledger.getService<ProofService>("proofService");
+```
+
+## Methods
+
+### Create Proof
+
+Creates a new proof entry in the ledger with automatic JWT generation.
+
+```typescript
+const entry = await service.createProof({
+  subject_oid: "oid:onoal:user:alice",
+  issuer_oid: "oid:onoal:org:identity",
+  target: "oid:onoal:asset:123",
+  type: "AgeOver18",
+  payload: {
+    age: 25,
+    verified: true,
+  },
+  meta: {
+    source: "government_id",
+  },
+});
+```
+
+**Returns**: `LedgerEntry & { proof_jwt: string }`
+
+The returned entry includes a `proof_jwt` field containing a signed JWT with:
+
+- Entry metadata (id, hash, timestamp)
+- Proof data (subject_oid, issuer_oid, target, type, proof_data)
+- 1 year expiration by default
+- Ed25519 signature
+
+### Query Proofs
+
+Queries proofs from the ledger with optional filters.
+
+```typescript
+const result = await service.queryProofs({
+  subject_oid: "oid:onoal:user:alice",
+  issuer_oid: "oid:onoal:org:identity",
+  type: "AgeOver18",
+  limit: 20,
+  cursor: 1234567890,
+});
+```
+
+**Returns**: `{ entries: LedgerEntry[], nextCursor: number | null, hasMore: boolean }`
+
+**Filters**:
+
+- `subject_oid` - Filter by subject OID
+- `issuer_oid` - Filter by issuer OID
+- `type` - Filter by proof type
+- `status` - Filter by entry status (active, revoked, etc.)
+- `limit` - Maximum number of results (default: 50)
+- `cursor` - Pagination cursor (timestamp)
+
+### Get Proof
+
+Retrieves a proof entry by ID.
+
+```typescript
+const proof = await service.getProof(entry.id);
+```
+
+**Returns**: `LedgerEntry | null`
+
+## Routes
+
+### POST /ledger/submit
+
+Submit a new proof to the ledger.
+
+**Request Body**:
+
+```json
+{
+  "subject_oid": "oid:onoal:user:alice",
+  "issuer_oid": "oid:onoal:org:identity",
+  "target": "oid:onoal:asset:123",
+  "type": "AgeOver18",
+  "payload": {
+    "age": 25,
+    "verified": true
+  },
+  "meta": {
+    "source": "government_id"
+  }
+}
+```
+
+**Response**:
+
+```json
+{
+  "id": "entry_123...",
+  "hash": "hash_123...",
+  "proof_jwt": "eyJhbGciOiJFZDI1NTE5In0...",
+  "timestamp": 1234567890
+}
+```
+
+### GET /ledger/proof/:id
+
+Get a proof entry by ID.
+
+**Response**:
+
+```json
+{
+  "id": "entry_123...",
+  "stream": "proofs",
+  "timestamp": 1234567890,
+  "payload": {
+    "subject_oid": "oid:onoal:user:alice",
+    "issuer_oid": "oid:onoal:org:identity",
+    "target": "oid:onoal:asset:123",
+    "type": "AgeOver18",
+    "proof_data": {
+      "age": 25,
+      "verified": true
+    }
+  },
+  "hash": "hash_123...",
+  "prev_hash": "prev_hash_123...",
+  "signature": "sig_123...",
+  "status": "active",
+  "meta": {
+    "source": "government_id"
+  }
+}
+```
+
+### GET /ledger/proofs
+
+Query proofs with filters.
+
+**Query Parameters**:
+
+- `subject_oid` - Filter by subject OID
+- `issuer_oid` - Filter by issuer OID
+- `type` - Filter by proof type
+- `status` - Filter by entry status
+- `limit` - Maximum number of results (default: 50)
+- `cursor` - Pagination cursor (timestamp)
+
+**Response**:
+
+```json
+{
+  "proofs": [
+    {
+      "id": "entry_123...",
+      "stream": "proofs",
+      "timestamp": 1234567890,
+      "payload": { ... },
+      "hash": "hash_123...",
+      ...
+    }
+  ],
+  "next_cursor": 1234567891,
+  "has_more": true
+}
+```
+
+## Type Definitions
+
+```typescript
+interface CreateProofOptions {
+  subject_oid: string;
+  issuer_oid: string;
+  target: string;
+  type: string;
+  payload: unknown;
+  meta?: Record<string, unknown>;
+}
+
+interface QueryProofsFilters {
+  subject_oid?: string;
+  issuer_oid?: string;
+  type?: string;
+  status?: EntryStatus;
+  limit?: number;
+  cursor?: number;
+}
+```
+
+## Next Steps
+
+- [Asset Module](/docs/modules/asset) - Issue and query assets
+- [Connect Module](/docs/modules/connect) - Manage connect grants

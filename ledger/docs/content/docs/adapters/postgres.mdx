@@ -1,0 +1,141 @@
+---
+title: PostgreSQL
+description: Production-ready PostgreSQL adapter for Ledger Framework
+---
+
+# PostgreSQL Adapter
+
+The PostgreSQL Adapter provides persistent storage using PostgreSQL with Neon serverless. Perfect for production deployments and multi-server setups.
+
+## Installation
+
+```bash
+pnpm add @onoal/ledger-database-postgres
+```
+
+## Usage
+
+```typescript
+import { postgresAdapter } from "@onoal/ledger-database-postgres";
+import { createLedger } from "@onoal/ledger-core";
+
+const ledger = createLedger({
+  adapter: postgresAdapter({
+    connectionString: process.env.DATABASE_URL!,
+  }),
+});
+```
+
+## Features
+
+- **Production-ready**: Built for production deployments
+- **Serverless**: Works with Neon serverless PostgreSQL
+- **Connection Pooling**: Automatic connection pooling
+- **Multi-server Support**: Works with multiple server instances
+- **Cloud Compatible**: Works with Neon, Supabase, and other PostgreSQL providers
+- **Type-Safe**: Full TypeScript support with Drizzle ORM
+
+## Database Schema
+
+The adapter uses the same schema as SQLite, adapted for PostgreSQL:
+
+```sql
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id TEXT PRIMARY KEY,
+  stream TEXT NOT NULL,
+  timestamp BIGINT NOT NULL,
+  payload JSONB NOT NULL,
+  hash TEXT NOT NULL,
+  prev_hash TEXT,
+  signature TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  meta JSONB,
+  created_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ledger_tip (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  entry_id TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  timestamp BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ledger_checkpoints (
+  id TEXT PRIMARY KEY,
+  timestamp BIGINT NOT NULL,
+  root_hash TEXT NOT NULL,
+  signature TEXT NOT NULL,
+  entries_count INTEGER NOT NULL,
+  start_timestamp BIGINT NOT NULL,
+  end_timestamp BIGINT NOT NULL,
+  created_at BIGINT NOT NULL
+);
+```
+
+## Configuration
+
+### Connection String
+
+```typescript
+postgresAdapter({
+  connectionString: process.env.DATABASE_URL!,
+});
+```
+
+### Environment Variables
+
+```bash
+DATABASE_URL=postgresql://user:password@host:5432/database
+```
+
+### Neon Serverless
+
+The adapter works seamlessly with Neon serverless PostgreSQL:
+
+```typescript
+import { neon } from "@neondatabase/serverless";
+
+const adapter = postgresAdapter({
+  connectionString: process.env.DATABASE_URL!,
+});
+```
+
+## Migrations
+
+PostgreSQL migrations should be run manually using Drizzle Kit:
+
+```bash
+cd ledger/database/postgres
+pnpm db:generate
+pnpm db:migrate
+```
+
+For development, you can use programmatic migrations (warning: not recommended for production):
+
+```typescript
+const adapter = postgresAdapter({
+  connectionString: process.env.DATABASE_URL!,
+});
+await adapter.migrate?.(); // Warning logged
+```
+
+## Performance
+
+- **Indexes**: Automatic indexes on `stream`, `timestamp`, `hash`, and chain columns
+- **Connection Pooling**: Efficient connection management
+- **JSONB**: Fast JSON operations with PostgreSQL JSONB type
+- **Concurrent Writes**: Supports multiple concurrent writers
+
+## Use Cases
+
+- Production deployments
+- Multi-server deployments
+- Cloud deployments (Neon, Supabase, etc.)
+- High-traffic applications
+- Cloudflare Workers with Neon
+
+## Next Steps
+
+- [SQLite Adapter](/docs/adapters/sqlite) - For development
+- [D1 Adapter](/docs/adapters/d1) - For Cloudflare Workers

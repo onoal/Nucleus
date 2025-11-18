@@ -1,0 +1,22 @@
+[package]
+name = "nucleus-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Nucleus Core - Pure ledger engine (no I/O)"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+sha2 = { workspace = true }
+hex = { workspace = true }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[lib]
+name = "nucleus_core"
+path = "src/lib.rs"
+

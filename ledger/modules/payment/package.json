@@ -1,0 +1,52 @@
+{
+  "name": "@onoal/ledger-module-payment",
+  "version": "0.1.0",
+  "description": "Payment module for Onoal Ledger Framework - verified payments with Stripe, Mollie, and ledger tokens",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./schema": {
+      "import": "./dist/schema/index.js",
+      "types": "./dist/schema/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "onoal",
+    "ledger",
+    "payment",
+    "stripe",
+    "mollie",
+    "verified"
+  ],
+  "author": "Onoal",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/onoal/onoal-os.git",
+    "directory": "ledger/modules/payment"
+  },
+  "dependencies": {
+    "@onoal/ledger-core": "workspace:*",
+    "drizzle-orm": "^0.29.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}

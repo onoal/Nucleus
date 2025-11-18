@@ -1,0 +1,148 @@
+---
+title: D1
+description: Cloudflare D1 adapter for edge deployments
+---
+
+# D1 Adapter
+
+The D1 Adapter provides SQLite-compatible storage using Cloudflare D1. Perfect for Cloudflare Workers deployments and edge computing.
+
+## Installation
+
+```bash
+pnpm add @onoal/ledger-database-cloudflare-d1
+```
+
+## Usage
+
+```typescript
+import { d1Adapter } from "@onoal/ledger-database-cloudflare-d1";
+import { createLedger } from "@onoal/ledger-core";
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const ledger = createLedger({
+      adapter: d1Adapter(env.DB),
+    });
+    // ...
+  },
+};
+```
+
+## Features
+
+- **Edge-Ready**: Built for Cloudflare Workers
+- **SQLite-Compatible**: Uses SQLite syntax
+- **Serverless**: Automatic scaling
+- **Global Distribution**: Deploy to edge locations worldwide
+- **Programmatic Migrations**: Automatic table creation
+
+## Database Schema
+
+D1 uses SQLite syntax, so the schema is identical to SQLite:
+
+```sql
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id TEXT PRIMARY KEY,
+  stream TEXT NOT NULL,
+  timestamp INTEGER NOT NULL,
+  payload TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  prev_hash TEXT,
+  signature TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  meta TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ledger_tip (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  entry_id TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  timestamp INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ledger_checkpoints (
+  id TEXT PRIMARY KEY,
+  timestamp INTEGER NOT NULL,
+  root_hash TEXT NOT NULL,
+  signature TEXT NOT NULL,
+  entries_count INTEGER NOT NULL,
+  start_timestamp INTEGER NOT NULL,
+  end_timestamp INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+```
+
+## Configuration
+
+### Wrangler Configuration
+
+Add D1 database binding to `wrangler.toml`:
+
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "my-ledger"
+database_id = "your-database-id"
+```
+
+### Environment Variables
+
+D1 databases are accessed via the `env` object in Cloudflare Workers:
+
+```typescript
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const adapter = d1Adapter(env.DB);
+    // ...
+  },
+};
+```
+
+## Migrations
+
+The adapter includes programmatic migrations:
+
+```typescript
+const adapter = d1Adapter(env.DB);
+await adapter.migrate?.();
+```
+
+Migrations are safe to run multiple times - they use `CREATE TABLE IF NOT EXISTS`.
+
+### Manual Migrations
+
+You can also run migrations manually using Wrangler:
+
+```bash
+wrangler d1 migrations apply my-ledger
+```
+
+## Performance
+
+- **Edge Caching**: D1 supports edge caching for read operations
+- **Low Latency**: Deploy close to users worldwide
+- **Automatic Scaling**: Scales automatically with traffic
+- **Indexes**: Automatic indexes on key columns
+
+## Use Cases
+
+- Cloudflare Workers deployments
+- Edge computing applications
+- Serverless applications
+- Global distribution
+- Low-latency requirements
+
+## Limitations
+
+- **Cloudflare Only**: Only works with Cloudflare Workers
+- **SQLite Syntax**: Uses SQLite-compatible syntax (not full PostgreSQL)
+- **Read Replicas**: D1 supports read replicas for better performance
+
+## Next Steps
+
+- [SQLite Adapter](/docs/adapters/sqlite) - For local development
+- [PostgreSQL Adapter](/docs/adapters/postgres) - For production deployments
+- [Cloudflare Workers Guide](/docs/cloudflare-workers) - Deploy to Cloudflare Workers

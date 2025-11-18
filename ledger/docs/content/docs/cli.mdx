@@ -1,0 +1,118 @@
+---
+title: CLI Tool
+description: Scaffold new ledger projects with the CLI
+---
+
+# CLI Tool
+
+The Ledger CLI tool helps you scaffold new ledger projects quickly.
+
+## Installation
+
+```bash
+pnpm add -g create-onoal-ledger
+
+# Or use npx (recommended)
+npx create-onoal-ledger
+```
+
+## Usage
+
+```bash
+create-onoal-ledger
+```
+
+The CLI will prompt you for:
+
+1. **Project name** - Name of your ledger project
+2. **Platform** - Node.js (Express) or Cloudflare Workers
+3. **Database** - SQLite, PostgreSQL, or D1
+4. **Modules** - Select which modules to include (Proof, Asset, Connect)
+5. **Plugins** - Select which plugins to include (Webhook, ZK)
+
+## Example
+
+```bash
+$ create-onoal-ledger
+
+🚀 Create Onoal Ledger
+
+? Project name: my-ledger
+? Platform: Node.js (Express)
+? Database: SQLite (local)
+? Select modules: Proof Module, Asset Module, Connect Module
+? Select plugins: Webhook Plugin
+
+✅ Created my-ledger/
+
+Next steps:
+  cd my-ledger
+  pnpm install
+  pnpm dev
+```
+
+## Generated Project Structure
+
+```
+my-ledger/
+├── src/
+│   └── index.ts          # Ledger server code
+├── package.json          # Dependencies and scripts
+├── tsconfig.json         # TypeScript configuration
+├── .env.example          # Environment variables template
+├── .gitignore           # Git ignore rules
+├── README.md            # Project documentation
+└── wrangler.toml        # Cloudflare config (if cloudflare)
+```
+
+## Platform Options
+
+### Node.js (Express)
+
+Generates an Express server with:
+
+- Express.js setup
+- Ledger routes integration
+- Health check endpoint
+- Error handling middleware
+
+### Cloudflare Workers
+
+Generates a Cloudflare Worker with:
+
+- Worker entry point
+- Wrangler configuration
+- Environment variable support
+- Edge-ready deployment
+
+## Database Options
+
+### SQLite
+
+- Fast and simple
+- Local file storage
+- Perfect for development and small-scale deployments
+- WAL mode enabled by default
+
+### PostgreSQL
+
+- Production-ready
+- Serverless support (Neon)
+- Multi-server deployments
+- Connection pooling
+
+### D1
+
+- Cloudflare's SQLite-compatible database
+- Edge-ready
+- Perfect for Cloudflare Workers
+- Serverless scaling
+
+## Next Steps
+
+After scaffolding:
+
+1. Install dependencies: `pnpm install`
+2. Start development server: `pnpm dev`
+3. Read the generated README.md for API endpoints
+4. Customize your ledger as needed

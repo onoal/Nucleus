@@ -1,0 +1,134 @@
+---
+title: SQLite
+description: SQLite adapter for development and small-scale deployments
+---
+
+# SQLite Adapter
+
+The SQLite Adapter provides file-based persistent storage using SQLite with better-sqlite3. Perfect for development, testing, and small-scale deployments.
+
+## Installation
+
+```bash
+pnpm add @onoal/ledger-database-sqlite
+```
+
+## Usage
+
+```typescript
+import { sqliteAdapter } from "@onoal/ledger-database-sqlite";
+import { createLedger } from "@onoal/ledger-core";
+
+const ledger = createLedger({
+  adapter: sqliteAdapter({
+    path: "./ledger.db",
+    enableWAL: true, // Enable WAL mode for better concurrency
+  }),
+});
+```
+
+## Features
+
+- **File-based**: Simple file-based storage
+- **WAL Mode**: Write-Ahead Logging for better concurrency
+- **No Server**: No external database server needed
+- **Perfect for Development**: Easy setup and testing
+- **Type-Safe**: Full TypeScript support with Drizzle ORM
+- **Programmatic Migrations**: Automatic table creation
+
+## Database Schema
+
+The adapter creates three tables:
+
+```sql
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id TEXT PRIMARY KEY,
+  stream TEXT NOT NULL,
+  timestamp INTEGER NOT NULL,
+  payload TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  prev_hash TEXT,
+  signature TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  meta TEXT,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ledger_tip (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  entry_id TEXT NOT NULL,
+  hash TEXT NOT NULL,
+  timestamp INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS ledger_checkpoints (
+  id TEXT PRIMARY KEY,
+  timestamp INTEGER NOT NULL,
+  root_hash TEXT NOT NULL,
+  signature TEXT NOT NULL,
+  entries_count INTEGER NOT NULL,
+  start_timestamp INTEGER NOT NULL,
+  end_timestamp INTEGER NOT NULL,
+  created_at INTEGER NOT NULL
+);
+```
+
+## Configuration
+
+### File Path
+
+```typescript
+sqliteAdapter({
+  path: "./ledger.db",
+  enableWAL: true, // Enable WAL mode (recommended)
+});
+```
+
+### WAL Mode
+
+WAL (Write-Ahead Logging) mode improves concurrency by allowing multiple readers and a single writer:
+
+```typescript
+sqliteAdapter({
+  path: "./ledger.db",
+  enableWAL: true, // Default: true
+});
+```
+
+## Migrations
+
+The adapter includes programmatic migrations that create tables if they don't exist:
+
+```typescript
+const adapter = sqliteAdapter({ path: "./ledger.db" });
+await adapter.migrate?.();
+```
+
+Migrations are safe to run multiple times - they use `CREATE TABLE IF NOT EXISTS`.
+
+## Performance
+
+- **Indexes**: Automatic indexes on `stream`, `timestamp`, `hash`, and chain columns
+- **WAL Mode**: Better concurrency with WAL mode enabled
+- **Fast Reads**: SQLite is very fast for read operations
+- **Single File**: Easy backup and portability
+
+## Use Cases
+
+- Development and testing
+- Small-scale deployments
+- Single-server deployments
+- Prototyping
+- Local development
+
+## Limitations
+
+- **Single Writer**: SQLite allows only one writer at a time (even with WAL)
+- **File-based**: Database is a single file
+- **Not for High Concurrency**: For high concurrency, use PostgreSQL
+
+## Next Steps
+
+- [PostgreSQL Adapter](/docs/adapters/postgres) - For production deployments
+- [D1 Adapter](/docs/adapters/d1) - For Cloudflare Workers

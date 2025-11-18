@@ -1,0 +1,272 @@
+---
+title: Connect Module
+description: Manage connect grants and events in the ledger
+---
+
+# Connect Module
+
+The Connect Module provides connect grant creation and querying functionality for OAuth-like authorization flows.
+
+## Installation
+
+```bash
+pnpm add @onoal/ledger-module-connect
+```
+
+## Usage
+
+```typescript
+import { createLedger } from "@onoal/ledger-core";
+import { connectModule } from "@onoal/ledger-module-connect";
+
+const ledger = createLedger({
+  modules: [connectModule()],
+  // ...
+});
+```
+
+## Service
+
+Access the service via the ledger:
+
+```typescript
+const service = ledger.getService<ConnectService>("connectService");
+```
+
+## Methods
+
+### Create Grant
+
+Creates a new connect grant in the ledger.
+
+```typescript
+const entry = await service.createGrant({
+  app_oid: "oid:onoal:app:festival-app",
+  subject_oid: "oid:onoal:user:alice",
+  scopes: ["read:profile", "read:assets"],
+  resource: "oid:onoal:org:festival",
+  policy: "https://example.com/policy.json",
+  lawful_basis: "consent",
+  ttl_caps: {
+    "read:profile": 3600, // 1 hour
+    "read:assets": 7200, // 2 hours
+  },
+  exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+  challenge_nonce: "nonce_123...",
+  vp_jwt_hash: "hash_123...",
+  meta: {
+    source: "oauth_flow",
+  },
+});
+```
+
+**Returns**: `LedgerEntry & { grant_id: string }`
+
+The returned entry includes a `grant_id` field containing the grant identifier.
+
+### Query Grants
+
+Queries connect grants from the ledger with optional filters.
+
+```typescript
+const result = await service.queryGrants({
+  app_oid: "oid:onoal:app:festival-app",
+  subject_oid: "oid:onoal:user:alice",
+  status: "active",
+  limit: 20,
+  cursor: 1234567890,
+});
+```
+
+**Returns**: `{ entries: LedgerEntry[], nextCursor: number | null, hasMore: boolean }`
+
+**Filters**:
+- `app_oid` - Filter by app OID
+- `subject_oid` - Filter by subject OID
+- `controller_oid` - Filter by controller OID (for org↔org contracts)
+- `status` - Filter by grant status (active, revoked, suspended, expired, used)
+- `limit` - Maximum number of results (default: 50)
+- `cursor` - Pagination cursor (timestamp)
+
+### Get Grant
+
+Retrieves a connect grant entry by ID.
+
+```typescript
+const grant = await service.getGrant(entry.id);
+```
+
+**Returns**: `LedgerEntry | null`
+
+### Create Event
+
+Creates a connect event in the ledger for audit logging.
+
+```typescript
+await service.createEvent({
+  event_type: "grant_used",
+  app_oid: "oid:onoal:app:festival-app",
+  subject_oid: "oid:onoal:user:alice",
+  grant_id: entry.id,
+  connect_id: "connect_123...",
+  challenge_nonce: "nonce_123...",
+  scopes: ["read:profile"],
+  actor_oid: "oid:onoal:user:bob",
+  meta: {
+    ip_address: "192.168.1.1",
+  },
+});
+```
+
+**Returns**: `LedgerEntry`
+
+## Routes
+
+### POST /connect/grant
+
+Create a new connect grant.
+
+**Request Body**:
+```json
+{
+  "app_oid": "oid:onoal:app:festival-app",
+  "subject_oid": "oid:onoal:user:alice",
+  "scopes": ["read:profile", "read:assets"],
+  "resource": "oid:onoal:org:festival",
+  "policy": "https://example.com/policy.json",
+  "lawful_basis": "consent",
+  "ttl_caps": {
+    "read:profile": 3600,
+    "read:assets": 7200
+  },
+  "exp": 1234567890,
+  "challenge_nonce": "nonce_123...",
+  "vp_jwt_hash": "hash_123...",
+  "meta": {
+    "source": "oauth_flow"
+  }
+}
+```
+
+**Response**:
+```json
+{
+  "id": "entry_123...",
+  "grant_id": "grant_123...",
+  "hash": "hash_123...",
+  "timestamp": 1234567890
+}
+```
+
+### GET /connect/grant/:id
+
+Get a connect grant entry by ID.
+
+**Response**:
+```json
+{
+  "id": "entry_123...",
+  "stream": "connect_grants",
+  "timestamp": 1234567890,
+  "payload": {
+    "grant_id": "grant_123...",
+    "app_oid": "oid:onoal:app:festival-app",
+    "subject_oid": "oid:onoal:user:alice",
+    "scopes": ["read:profile", "read:assets"],
+    "resource": "oid:onoal:org:festival",
+    "policy": "https://example.com/policy.json",
+    "lawful_basis": "consent",
+    "ttl_caps": {
+      "read:profile": 3600,
+      "read:assets": 7200
+    },
+    "exp": 1234567890,
+    "challenge_nonce": "nonce_123...",
+    "vp_jwt_hash": "hash_123...",
+    "status": "active"
+  },
+  "hash": "hash_123...",
+  "prev_hash": "prev_hash_123...",
+  "signature": "sig_123...",
+  "status": "active",
+  "meta": {
+    "source": "oauth_flow"
+  }
+}
+```
+
+### GET /connect/grants
+
+Query connect grants with filters.
+
+**Query Parameters**:
+- `app_oid` - Filter by app OID
+- `subject_oid` - Filter by subject OID
+- `controller_oid` - Filter by controller OID
+- `status` - Filter by grant status
+- `limit` - Maximum number of results (default: 50)
+- `cursor` - Pagination cursor (timestamp)
+
+**Response**:
+```json
+{
+  "grants": [
+    {
+      "id": "entry_123...",
+      "stream": "connect_grants",
+      "timestamp": 1234567890,
+      "payload": { ... },
+      "hash": "hash_123...",
+      ...
+    }
+  ],
+  "next_cursor": 1234567891,
+  "has_more": true
+}
+```
+
+## Type Definitions
+
+```typescript
+interface CreateGrantOptions {
+  app_oid: string;
+  subject_oid: string;
+  scopes: string[];
+  controller_oid?: string;
+  resource?: string;
+  policy?: string;
+  lawful_basis?: string;
+  ttl_caps?: Record<string, number>;
+  exp?: number;
+  challenge_nonce?: string;
+  vp_jwt_hash?: string;
+  meta?: Record<string, unknown>;
+}
+
+interface QueryGrantsFilters {
+  app_oid?: string;
+  subject_oid?: string;
+  controller_oid?: string;
+  status?: "active" | "revoked" | "suspended" | "expired" | "used";
+  limit?: number;
+  cursor?: number;
+}
+
+interface CreateEventOptions {
+  event_type: string;
+  app_oid: string;
+  subject_oid: string;
+  grant_id?: string;
+  connect_id?: string;
+  challenge_nonce?: string;
+  scopes?: string[];
+  actor_oid?: string;
+  meta?: Record<string, unknown>;
+}
+```
+
+## Next Steps
+
+- [Proof Module](/docs/modules/proof) - Create and query proofs
+- [Asset Module](/docs/modules/asset) - Issue and query assets
+

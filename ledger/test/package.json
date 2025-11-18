@@ -1,0 +1,33 @@
+{
+  "name": "@onoal/ledger-test",
+  "version": "0.1.0",
+  "description": "Comprehensive tests for Onoal Ledger Framework",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "keywords": [
+    "onoal",
+    "ledger",
+    "test",
+    "framework"
+  ],
+  "author": "Onoal",
+  "license": "MIT",
+  "dependencies": {
+    "@onoal/ledger-core": "workspace:*",
+    "@onoal/ledger-module-token": "workspace:*",
+    "@onoal/ledger-database-sqlite": "workspace:*",
+    "drizzle-orm": "^0.29.0"
+  },
+  "devDependencies": {
+    "@noble/curves": "^1.4.0",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^20.0.0",
+    "better-sqlite3": "^9.0.0",
+    "typescript": "^5.9.2",
+    "vitest": "^1.0.0"
+  }
+}
