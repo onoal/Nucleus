@@ -3,7 +3,7 @@
 //! These tests verify the critical "save → restart → load" flow.
 
 use nucleus_engine::{LedgerConfig, LedgerEngine};
-use nucleus_core::Record;
+use nucleus_core::{Record, RequestContext};
 use serde_json::json;
 use std::fs;
 use std::path::Path;
@@ -20,6 +20,11 @@ fn create_test_record(id: &str, stream: &str, timestamp: u64) -> Record {
         }),
         meta: None,
     }
+}
+
+/// Helper to create test context
+fn create_test_context() -> RequestContext {
+    RequestContext::new("oid:onoal:system:test".to_string())
 }
 
 /// Helper to clean up test database
@@ -51,13 +56,13 @@ fn test_storage_save_and_reload() {
 
         // Add some records
         let record1 = create_test_record("rec-1", "proofs", 1000);
-        let hash1 = engine.append_record(record1).expect("Failed to append record 1");
+        let hash1 = engine.append_record(record1, &create_test_context()).expect("Failed to append record 1");
 
         let record2 = create_test_record("rec-2", "proofs", 1001);
-        let hash2 = engine.append_record(record2).expect("Failed to append record 2");
+        let hash2 = engine.append_record(record2, &create_test_context()).expect("Failed to append record 2");
 
         let record3 = create_test_record("rec-3", "assets", 1002);
-        let hash3 = engine.append_record(record3).expect("Failed to append record 3");
+        let hash3 = engine.append_record(record3, &create_test_context()).expect("Failed to append record 3");
 
         // Verify in-memory state
         assert_eq!(engine.len(), 3);
@@ -125,7 +130,7 @@ fn test_storage_append_after_reload() {
         let mut engine = LedgerEngine::new(config).expect("Failed to create engine");
 
         let record1 = create_test_record("rec-1", "proofs", 1000);
-        first_hash = engine.append_record(record1).expect("Failed to append record 1");
+        first_hash = engine.append_record(record1, &create_test_context()).expect("Failed to append record 1");
 
         assert_eq!(engine.len(), 1);
     }
@@ -141,10 +146,10 @@ fn test_storage_append_after_reload() {
 
         // Append more records (should link to existing chain)
         let record2 = create_test_record("rec-2", "proofs", 1001);
-        let hash2 = engine.append_record(record2).expect("Failed to append record 2");
+        let hash2 = engine.append_record(record2, &create_test_context()).expect("Failed to append record 2");
 
         let record3 = create_test_record("rec-3", "proofs", 1002);
-        let _hash3 = engine.append_record(record3).expect("Failed to append record 3");
+        let _hash3 = engine.append_record(record3, &create_test_context()).expect("Failed to append record 3");
 
         // Verify total count
         assert_eq!(engine.len(), 3);
@@ -199,7 +204,7 @@ fn test_storage_batch_append_and_reload() {
             create_test_record("batch-5", "proofs", 2004),
         ];
 
-        let hashes = engine.append_batch(records).expect("Batch append failed");
+        let hashes = engine.append_batch(records, &create_test_context()).expect("Batch append failed");
         assert_eq!(hashes.len(), 5);
         assert_eq!(engine.len(), 5);
 
@@ -243,7 +248,7 @@ fn test_in_memory_no_storage() {
 
     // Add records
     let record1 = create_test_record("mem-1", "proofs", 3000);
-    let _hash1 = engine.append_record(record1).expect("Failed to append record");
+    let _hash1 = engine.append_record(record1, &create_test_context()).expect("Failed to append record");
 
     assert_eq!(engine.len(), 1);
 

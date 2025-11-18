@@ -36,17 +36,33 @@ impl WasmLedger {
     }
 
     /// Append a record to the ledger
+    ///
+    /// # Security
+    ///
+    /// Requires a valid request context with requester OID.
+    /// This is enforced at the WASM boundary for security.
     #[wasm_bindgen]
-    pub fn append_record(&mut self, record: JsValue) -> Result<String, JsValue> {
-        // Deserialize record from JS
+    pub fn append_record(&mut self, record: JsValue, context: JsValue) -> Result<String, JsValue> {
+        // Deserialize and validate context FIRST (security boundary)
+        let context_json: serde_json::Value = serde_wasm_bindgen::from_value(context)
+            .map_err(|e| JsValue::from_str(&format!("Context deserialization error: {}", e)))?;
+
+        let ctx: nucleus_core::RequestContext = serde_json::from_value(context_json)
+            .map_err(|e| JsValue::from_str(&format!("Context error: {}", e)))?;
+
+        // Validate context
+        ctx.validate()
+            .map_err(|e| JsValue::from_str(&format!("Context validation failed: {}", e)))?;
+
+        // Deserialize record
         let record_json: serde_json::Value = serde_wasm_bindgen::from_value(record)
             .map_err(|e| JsValue::from_str(&format!("Record deserialization error: {}", e)))?;
 
         let record: Record = serde_json::from_value(record_json)
             .map_err(|e| JsValue::from_str(&format!("Record error: {}", e)))?;
 
-        // Append to engine
-        let hash = self.inner.append_record(record)
+        // Append to engine (with context)
+        let hash = self.inner.append_record(record, &ctx)
             .map_err(|e| JsValue::from_str(&format!("Append error: {}", e)))?;
 
         // Return hash as hex string
@@ -160,8 +176,24 @@ impl WasmLedger {
     }
 
     /// Append multiple records atomically
+    ///
+    /// # Security
+    ///
+    /// Requires a valid request context with requester OID.
+    /// This is enforced at the WASM boundary for security.
     #[wasm_bindgen]
-    pub fn append_batch(&mut self, records: JsValue) -> Result<JsValue, JsValue> {
+    pub fn append_batch(&mut self, records: JsValue, context: JsValue) -> Result<JsValue, JsValue> {
+        // Deserialize and validate context FIRST (security boundary)
+        let context_json: serde_json::Value = serde_wasm_bindgen::from_value(context)
+            .map_err(|e| JsValue::from_str(&format!("Context deserialization error: {}", e)))?;
+
+        let ctx: nucleus_core::RequestContext = serde_json::from_value(context_json)
+            .map_err(|e| JsValue::from_str(&format!("Context error: {}", e)))?;
+
+        // Validate context
+        ctx.validate()
+            .map_err(|e| JsValue::from_str(&format!("Context validation failed: {}", e)))?;
+
         // Deserialize records array from JS
         let records_json: serde_json::Value = serde_wasm_bindgen::from_value(records)
             .map_err(|e| JsValue::from_str(&format!("Records error: {}", e)))?;
@@ -176,8 +208,8 @@ impl WasmLedger {
             rust_records.push(record);
         }
 
-        // Append batch
-        let hashes = self.inner.append_batch(rust_records)
+        // Append batch (with context)
+        let hashes = self.inner.append_batch(rust_records, &ctx)
             .map_err(|e| JsValue::from_str(&format!("Batch append error: {}", e)))?;
 
         // Convert hashes to hex strings
@@ -257,6 +289,57 @@ impl WasmLedger {
             Some(state) => JsValue::from_str(&format!("{:?}", state)),
             None => JsValue::NULL,
         }
+    }
+    
+    /// Grant ACL access
+    ///
+    /// Grants permission for a subject to access a resource.
+    #[wasm_bindgen]
+    pub fn grant(&mut self, grant: JsValue) -> Result<(), JsValue> {
+        let grant: nucleus_engine::Grant = serde_wasm_bindgen::from_value(grant)
+            .map_err(|e| JsValue::from_str(&format!("Grant deserialization error: {}", e)))?;
+        
+        self.inner.grant(grant)
+            .map_err(|e| JsValue::from_str(&format!("Grant failed: {}", e)))
+    }
+    
+    /// Check ACL access
+    ///
+    /// Returns true if the requester has the specified permission.
+    #[wasm_bindgen]
+    pub fn check_access(&self, params: JsValue) -> Result<bool, JsValue> {
+        let params: nucleus_engine::CheckParams = serde_wasm_bindgen::from_value(params)
+            .map_err(|e| JsValue::from_str(&format!("Check params deserialization error: {}", e)))?;
+        
+        self.inner.check_access(params)
+            .map_err(|e| JsValue::from_str(&format!("Check access failed: {}", e)))
+    }
+    
+    /// Revoke ACL access
+    ///
+    /// Revokes permission for a subject to access a resource.
+    #[wasm_bindgen]
+    pub fn revoke(&mut self, params: JsValue) -> Result<(), JsValue> {
+        let params: nucleus_engine::RevokeParams = serde_wasm_bindgen::from_value(params)
+            .map_err(|e| JsValue::from_str(&format!("Revoke params deserialization error: {}", e)))?;
+        
+        self.inner.revoke(params)
+            .map_err(|e| JsValue::from_str(&format!("Revoke failed: {}", e)))
+    }
+    
+    /// List all grants for a subject
+    ///
+    /// Returns all active (non-expired) grants for the given subject OID.
+    #[wasm_bindgen]
+    pub fn list_grants(&self, subject_oid: &str) -> Result<JsValue, JsValue> {
+        let grants = self.inner.list_grants(subject_oid)
+            .map_err(|e| JsValue::from_str(&format!("List grants failed: {}", e)))?;
+        
+        let json = serde_json::to_value(&grants)
+            .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?;
+        
+        serde_wasm_bindgen::to_value(&json)
+            .map_err(|e| JsValue::from_str(&format!("WASM bindgen error: {}", e)))
     }
 }
 

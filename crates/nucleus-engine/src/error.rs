@@ -38,6 +38,22 @@ pub enum EngineError {
     /// Storage error
     #[error("Storage error: {0}")]
     Storage(#[from] crate::storage::StorageError),
+    
+    /// Access denied (ACL)
+    #[error("Access denied: {0}")]
+    AccessDenied(String),
+    
+    /// ACL error
+    #[error("ACL error: {0}")]
+    Acl(#[from] crate::acl::AclError),
+    
+    /// Configuration error (generic)
+    #[error("Configuration error: {0}")]
+    Configuration(String),
+    
+    /// Context error
+    #[error("Context error: {0}")]
+    Context(#[from] nucleus_core::ContextError),
 }
 
 /// Result type alias for convenience

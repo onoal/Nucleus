@@ -1,6 +1,6 @@
 use nucleus_engine::{LedgerEngine, LedgerConfig, QueryFilters};
 use nucleus_core::module::ModuleConfig;
-use nucleus_core::Record;
+use nucleus_core::{Record, RequestContext};
 
 fn create_test_config() -> LedgerConfig {
     LedgerConfig::with_modules(
@@ -18,6 +18,10 @@ fn create_test_config() -> LedgerConfig {
             ),
         ],
     )
+}
+
+fn create_test_context() -> RequestContext {
+    RequestContext::new("oid:onoal:system:test".to_string())
 }
 
 /// E2E Test: Complete engine lifecycle
@@ -44,7 +48,7 @@ fn test_engine_complete_lifecycle() {
                 "issuer_oid": "oid:onoal:org:example",
             }),
         );
-        let hash = engine.append_record(record).unwrap();
+        let hash = engine.append_record(record, &create_test_context()).unwrap();
         hashes.push(hash);
     }
 
@@ -88,7 +92,7 @@ fn test_engine_query_operations() {
                 })
             },
         );
-        engine.append_record(record).unwrap();
+        engine.append_record(record, &create_test_context()).unwrap();
     }
 
     // Query proofs
@@ -123,7 +127,7 @@ fn test_engine_query_pagination() {
                 "issuer_oid": "oid:onoal:org:example",
             }),
         );
-        engine.append_record(record).unwrap();
+        engine.append_record(record, &create_test_context()).unwrap();
     }
 
     // Query with limit
@@ -169,7 +173,7 @@ fn test_engine_batch_atomicity() {
         })
         .collect();
 
-    let hashes = engine.append_batch(records).unwrap();
+    let hashes = engine.append_batch(records, &create_test_context()).unwrap();
     assert_eq!(hashes.len(), 5);
     assert_eq!(engine.len(), 5);
 
@@ -209,7 +213,7 @@ fn test_engine_batch_failure() {
     ];
 
     // Batch should fail
-    assert!(engine.append_batch(records).is_err());
+    assert!(engine.append_batch(records, &create_test_context()).is_err());
 
     // No records should be added
     assert_eq!(engine.len(), 0);
@@ -232,7 +236,7 @@ fn test_engine_module_validation() {
             "issuer_oid": "oid:onoal:org:example",
         }),
     );
-    assert!(engine.append_record(valid_record).is_ok());
+    assert!(engine.append_record(valid_record, &create_test_context()).is_ok());
 
     // Invalid proof record (missing required fields)
     let invalid_record = Record::new(
@@ -244,7 +248,7 @@ fn test_engine_module_validation() {
             // Missing subject_oid and issuer_oid
         }),
     );
-    assert!(engine.append_record(invalid_record).is_err());
+    assert!(engine.append_record(invalid_record, &create_test_context()).is_err());
 }
 
 /// E2E Test: Query with timestamp range
@@ -265,7 +269,7 @@ fn test_engine_query_timestamp_range() {
                 "issuer_oid": "oid:onoal:org:example",
             }),
         );
-        engine.append_record(record).unwrap();
+        engine.append_record(record, &create_test_context()).unwrap();
     }
 
     // Query with timestamp range
@@ -303,7 +307,7 @@ fn test_engine_large_chain() {
                 "index": i,
             }),
         );
-        engine.append_record(record).unwrap();
+        engine.append_record(record, &create_test_context()).unwrap();
     }
 
     assert_eq!(engine.len(), 1000);
@@ -332,7 +336,7 @@ fn test_engine_get_by_id() {
             "issuer_oid": "oid:onoal:org:example",
         }),
     );
-    engine.append_record(record).unwrap();
+    engine.append_record(record, &create_test_context()).unwrap();
 
     // Get by ID
     let retrieved = engine.get_record_by_id("unique-id-123");
@@ -362,7 +366,7 @@ fn test_engine_mixed_streams() {
                 "issuer_oid": "oid:onoal:org:example",
             }),
         );
-        engine.append_record(record).unwrap();
+        engine.append_record(record, &create_test_context()).unwrap();
     }
 
     // Add asset records
@@ -376,7 +380,7 @@ fn test_engine_mixed_streams() {
                 "owner_oid": "oid:onoal:human:bob",
             }),
         );
-        engine.append_record(record).unwrap();
+        engine.append_record(record, &create_test_context()).unwrap();
     }
 
     assert_eq!(engine.len(), 8);

@@ -45,6 +45,16 @@ fn create_test_record(id: &str, stream: &str, timestamp: u64) -> JsValue {
     serde_wasm_bindgen::to_value(&record).unwrap()
 }
 
+/// Helper to create a test context
+fn create_test_context() -> JsValue {
+    let context = serde_json::json!({
+        "requester_oid": "oid:onoal:system:test",
+        "metadata": null,
+        "timestamp": 1234567890
+    });
+    serde_wasm_bindgen::to_value(&context).unwrap()
+}
+
 /// E2E Test: Create WasmLedger from config
 #[wasm_bindgen_test]
 fn test_wasm_ledger_creation() {
@@ -63,7 +73,7 @@ fn test_wasm_append_record() {
     let mut ledger = WasmLedger::new(config).unwrap();
 
     let record = create_test_record("proof-1", "proofs", 1000);
-    let hash = ledger.append_record(record).unwrap();
+    let hash = ledger.append_record(record, create_test_context()).unwrap();
 
     assert!(!hash.is_empty());
     assert_eq!(ledger.len(), 1);
@@ -77,7 +87,7 @@ fn test_wasm_get_record_by_hash() {
     let mut ledger = WasmLedger::new(config).unwrap();
 
     let record = create_test_record("proof-1", "proofs", 1000);
-    let hash = ledger.append_record(record).unwrap();
+    let hash = ledger.append_record(record, create_test_context()).unwrap();
 
     let retrieved = ledger.get_record(&hash).unwrap();
     
@@ -97,7 +107,7 @@ fn test_wasm_get_record_by_id() {
     let mut ledger = WasmLedger::new(config).unwrap();
 
     let record = create_test_record("unique-id-123", "proofs", 1000);
-    ledger.append_record(record).unwrap();
+    ledger.append_record(record, create_test_context()).unwrap();
 
     let retrieved = ledger.get_record_by_id("unique-id-123").unwrap();
     assert!(retrieved.is_object());
@@ -116,7 +126,7 @@ fn test_wasm_query() {
     // Add multiple records
     for i in 0..5 {
         let record = create_test_record(&format!("proof-{}", i), "proofs", 1000 + i as u64);
-        ledger.append_record(record).unwrap();
+        ledger.append_record(record, create_test_context()).unwrap();
     }
 
     // Query with filters
@@ -154,7 +164,7 @@ fn test_wasm_batch_append() {
         records_array.push(&record);
     }
 
-    let hashes = ledger.append_batch(records_array.into()).unwrap();
+    let hashes = ledger.append_batch(records_array.into(), create_test_context()).unwrap();
     assert!(hashes.is_object());
 
     let hashes_array = js_sys::Array::from(&hashes);
@@ -171,7 +181,7 @@ fn test_wasm_verify_chain() {
     // Add multiple records
     for i in 0..10 {
         let record = create_test_record(&format!("record-{}", i), "proofs", 1000 + i as u64);
-        ledger.append_record(record).unwrap();
+        ledger.append_record(record, create_test_context()).unwrap();
     }
 
     // Verify chain
@@ -189,7 +199,7 @@ fn test_wasm_latest_hash() {
 
     // Add record
     let record = create_test_record("proof-1", "proofs", 1000);
-    let hash1 = ledger.append_record(record).unwrap();
+    let hash1 = ledger.append_record(record, create_test_context()).unwrap();
 
     // Latest hash should match
     let latest = ledger.latest_hash().unwrap();
@@ -197,7 +207,7 @@ fn test_wasm_latest_hash() {
 
     // Add another record
     let record2 = create_test_record("proof-2", "proofs", 1001);
-    let hash2 = ledger.append_record(record2).unwrap();
+    let hash2 = ledger.append_record(record2, create_test_context()).unwrap();
 
     // Latest hash should be updated
     let latest2 = ledger.latest_hash().unwrap();
@@ -264,7 +274,7 @@ fn test_wasm_query_pagination() {
     // Add 20 records
     for i in 0..20 {
         let record = create_test_record(&format!("record-{}", i), "proofs", 1000 + i as u64);
-        ledger.append_record(record).unwrap();
+        ledger.append_record(record, create_test_context()).unwrap();
     }
 
     // Query with limit
@@ -308,13 +318,13 @@ fn test_wasm_mixed_streams() {
     // Add proof records
     for i in 0..5 {
         let record = create_test_record(&format!("proof-{}", i), "proofs", 1000 + i as u64);
-        ledger.append_record(record).unwrap();
+        ledger.append_record(record, create_test_context()).unwrap();
     }
 
     // Add asset records
     for i in 0..3 {
         let record = create_test_record(&format!("asset-{}", i), "assets", 2000 + i as u64);
-        ledger.append_record(record).unwrap();
+        ledger.append_record(record, create_test_context()).unwrap();
     }
 
     assert_eq!(ledger.len(), 8);
@@ -346,7 +356,7 @@ fn test_wasm_error_handling() {
     });
     let invalid_js = serde_wasm_bindgen::to_value(&invalid_record).unwrap();
 
-    let result = ledger.append_record(invalid_js);
+    let result = ledger.append_record(invalid_js, create_test_context());
     assert!(result.is_err());
 }
 
@@ -359,7 +369,7 @@ fn test_wasm_large_chain() {
     // Add 100 records
     for i in 0..100 {
         let record = create_test_record(&format!("record-{}", i), "proofs", 1000 + i as u64);
-        ledger.append_record(record).unwrap();
+        ledger.append_record(record, create_test_context()).unwrap();
     }
 
     assert_eq!(ledger.len(), 100);

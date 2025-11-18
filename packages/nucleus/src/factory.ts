@@ -30,6 +30,7 @@ export async function createLedger(config: LedgerConfig): Promise<Ledger> {
  */
 class LedgerImpl implements Ledger {
   public readonly modules: Ledger["modules"];
+  public readonly acl: Ledger["acl"];
 
   constructor(public readonly id: string, private backend: WasmBackend) {
     // Create modules namespace
@@ -38,10 +39,21 @@ class LedgerImpl implements Ledger {
       metadata: () => this.backend.getModuleMetadata(),
       getState: (id: string) => this.backend.getModuleState(id),
     };
+
+    // Create ACL namespace
+    this.acl = {
+      grant: (grant) => this.backend.grant(grant),
+      check: (params) => this.backend.checkAccess(params),
+      revoke: (params) => this.backend.revoke(params),
+      listGrants: (subjectOid) => this.backend.listGrants(subjectOid),
+    };
   }
 
-  async append(record: LedgerRecord): Promise<string> {
-    return this.backend.append(record);
+  async append(
+    record: LedgerRecord,
+    context: import("./context/types").RequestContext
+  ): Promise<string> {
+    return this.backend.append(record, context);
   }
 
   async get(hash: string): Promise<LedgerRecord | null> {
@@ -56,8 +68,11 @@ class LedgerImpl implements Ledger {
     return this.backend.query(filters);
   }
 
-  async appendBatch(records: LedgerRecord[]): Promise<string[]> {
-    return this.backend.appendBatch(records);
+  async appendBatch(
+    records: LedgerRecord[],
+    context: import("./context/types").RequestContext
+  ): Promise<string[]> {
+    return this.backend.appendBatch(records, context);
   }
 
   async verify(): Promise<void> {

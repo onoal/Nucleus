@@ -105,9 +105,20 @@ export class WasmBackend {
   /**
    * Append a record
    */
-  async append(record: LedgerRecord): Promise<string> {
+  async append(
+    record: LedgerRecord,
+    context: import("../context/types").RequestContext
+  ): Promise<string> {
     const ledger = this.ensureLedger();
-    return ledger.append_record(record);
+
+    // Convert TypeScript context to Rust-compatible format
+    const rustContext = {
+      requester_oid: context.requesterOid,
+      metadata: context.metadata || null,
+      timestamp: context.timestamp || Date.now(),
+    };
+
+    return ledger.append_record(record, rustContext);
   }
 
   /**
@@ -160,9 +171,20 @@ export class WasmBackend {
   /**
    * Append batch
    */
-  async appendBatch(records: LedgerRecord[]): Promise<string[]> {
+  async appendBatch(
+    records: LedgerRecord[],
+    context: import("../context/types").RequestContext
+  ): Promise<string[]> {
     const ledger = this.ensureLedger();
-    return ledger.append_batch(records);
+
+    // Convert TypeScript context to Rust-compatible format
+    const rustContext = {
+      requester_oid: context.requesterOid,
+      metadata: context.metadata || null,
+      timestamp: context.timestamp || Date.now(),
+    };
+
+    return ledger.append_batch(records, rustContext);
   }
 
   /**
@@ -241,5 +263,76 @@ export class WasmBackend {
   async getModuleState(id: string): Promise<string | null> {
     const ledger = this.ensureLedger();
     return ledger.get_module_state(id);
+  }
+
+  /**
+   * Grant ACL access
+   */
+  async grant(grant: import("../types").Grant): Promise<void> {
+    const ledger = this.ensureLedger();
+
+    // Convert to Rust snake_case format
+    const rustGrant = {
+      subject_oid: grant.subjectOid,
+      resource_oid: grant.resourceOid,
+      action: grant.action,
+      granted_by: grant.grantedBy,
+      granted_at: grant.grantedAt,
+      expires_at: grant.expiresAt || null,
+      metadata: grant.metadata ? JSON.stringify(grant.metadata) : null,
+    };
+
+    return ledger.grant(rustGrant);
+  }
+
+  /**
+   * Check ACL access
+   */
+  async checkAccess(params: import("../types").CheckParams): Promise<boolean> {
+    const ledger = this.ensureLedger();
+
+    // Convert to Rust snake_case format
+    const rustParams = {
+      requester_oid: params.requesterOid,
+      resource_oid: params.resourceOid,
+      action: params.action,
+    };
+
+    return ledger.check_access(rustParams);
+  }
+
+  /**
+   * Revoke ACL access
+   */
+  async revoke(params: import("../types").RevokeParams): Promise<void> {
+    const ledger = this.ensureLedger();
+
+    // Convert to Rust snake_case format
+    const rustParams = {
+      subject_oid: params.subjectOid,
+      resource_oid: params.resourceOid,
+      action: params.action,
+    };
+
+    return ledger.revoke(rustParams);
+  }
+
+  /**
+   * List all grants for a subject
+   */
+  async listGrants(subjectOid: string): Promise<import("../types").Grant[]> {
+    const ledger = this.ensureLedger();
+    const rustGrants = await ledger.list_grants(subjectOid);
+
+    // Convert from Rust snake_case to TypeScript camelCase
+    return rustGrants.map((g: any) => ({
+      subjectOid: g.subject_oid,
+      resourceOid: g.resource_oid,
+      action: g.action,
+      grantedBy: g.granted_by,
+      grantedAt: g.granted_at,
+      expiresAt: g.expires_at || undefined,
+      metadata: g.metadata ? JSON.parse(g.metadata) : undefined,
+    }));
   }
 }

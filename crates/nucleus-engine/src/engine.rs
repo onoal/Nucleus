@@ -1,12 +1,13 @@
-use nucleus_core::{Record, Hash};
+use nucleus_core::{Record, Hash, RequestContext};
 use nucleus_core::hash_chain::{ChainEntry, verify_chain};
 use nucleus_core::module::Module;
-use crate::config::{LedgerConfig, StorageConfig};
+use crate::config::{LedgerConfig, StorageConfig, AclConfig};
 use crate::state::LedgerState;
 use crate::module_registry::ModuleRegistry;
 use crate::error::EngineError;
 use crate::query::{QueryFilters, QueryResult};
 use crate::storage::StorageBackend;
+use crate::acl::{AclBackend, InMemoryAcl, CheckParams};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::storage::SqliteStorage;
@@ -24,6 +25,9 @@ pub struct LedgerEngine {
     
     /// Optional persistent storage backend
     storage: Option<Box<dyn StorageBackend>>,
+    
+    /// Optional ACL backend
+    acl: Option<Box<dyn AclBackend>>,
 }
 
 impl LedgerEngine {
@@ -83,6 +87,12 @@ impl LedgerEngine {
             None
         };
 
+        // Initialize ACL backend
+        let acl: Option<Box<dyn AclBackend>> = match config.acl {
+            AclConfig::None => None,
+            AclConfig::InMemory => Some(Box::new(InMemoryAcl::new())),
+        };
+
         // Initialize state
         let mut state = LedgerState::new();
         
@@ -109,6 +119,7 @@ impl LedgerEngine {
             state,
             modules,
             storage,
+            acl,
         })
     }
 
@@ -137,29 +148,49 @@ impl LedgerEngine {
     /// - Record validation fails
     /// - Module hooks fail
     /// - Storage save fails (state unchanged)
-    pub fn append_record(&mut self, mut record: Record) -> Result<Hash, EngineError> {
-        // Validate record
+    pub fn append_record(&mut self, mut record: Record, context: &RequestContext) -> Result<Hash, EngineError> {
+        // 1. Validate context
+        context.validate()?;
+        
+        // 2. Check ACL if enabled
+        if let Some(acl) = &self.acl {
+            let resource_oid = format!("oid:onoal:ledger:{}", self.config.id);
+            
+            let allowed = acl.check(&CheckParams {
+                requester_oid: context.requester_oid.clone(),
+                resource_oid,
+                action: "write".to_string(),
+            })?;
+            
+            if !allowed {
+                return Err(EngineError::AccessDenied(
+                    format!("User {} does not have write access", context.requester_oid)
+                ));
+            }
+        }
+        
+        // 3. Validate record
         record.validate()?;
 
-        // Call module before_append hooks
+        // 4. Call module before_append hooks
         for module in self.modules.all_modules() {
             module.before_append(&mut record)?;
         }
 
-        // Get previous hash
+        // 5. Get previous hash
         let prev_hash = self.state.latest_hash().copied();
 
-        // Create chain entry
+        // 6. Create chain entry
         let entry = ChainEntry::new(record.clone(), prev_hash)?;
         let hash = entry.hash;
 
-        // Save to storage first (if configured)
+        // 7. Save to storage first (if configured)
         // If storage fails, state remains unchanged
         if let Some(ref mut storage) = self.storage {
             storage.save_entry(&entry)?;
         }
 
-        // Call module after_append hooks
+        // 8. Call module after_append hooks
         for module in self.modules.all_modules() {
             module.after_append(&record, &hash)?;
         }
@@ -262,13 +293,33 @@ impl LedgerEngine {
     /// - Any record validation fails
     /// - Any module hook fails
     /// - Any storage save fails (entire batch rolled back)
-    pub fn append_batch(&mut self, records: Vec<Record>) -> Result<Vec<Hash>, EngineError> {
-        // Validate all records first
+    pub fn append_batch(&mut self, records: Vec<Record>, context: &RequestContext) -> Result<Vec<Hash>, EngineError> {
+        // 1. Validate context
+        context.validate()?;
+        
+        // 2. Check ACL if enabled
+        if let Some(acl) = &self.acl {
+            let resource_oid = format!("oid:onoal:ledger:{}", self.config.id);
+            
+            let allowed = acl.check(&CheckParams {
+                requester_oid: context.requester_oid.clone(),
+                resource_oid,
+                action: "write".to_string(),
+            })?;
+            
+            if !allowed {
+                return Err(EngineError::AccessDenied(
+                    format!("User {} does not have write access", context.requester_oid)
+                ));
+            }
+        }
+        
+        // 3. Validate all records first
         for record in &records {
             record.validate()?;
         }
 
-        // Process all records through modules (before_append)
+        // 4. Process all records through modules (before_append)
         let mut processed_records = Vec::new();
         for mut record in records {
             // Call module before_append hooks
@@ -278,10 +329,10 @@ impl LedgerEngine {
             processed_records.push(record);
         }
 
-        // Get starting prev_hash
+        // 5. Get starting prev_hash
         let mut prev_hash = self.state.latest_hash().copied();
 
-        // Create all chain entries
+        // 6. Create all chain entries
         let mut entries = Vec::new();
         let mut hashes = Vec::new();
 
@@ -359,6 +410,52 @@ impl LedgerEngine {
     /// Get module state by ID
     pub fn module_state(&self, id: &str) -> Option<nucleus_core::module::ModuleState> {
         self.modules.get_state(id)
+    }
+    
+    /// Grant ACL access
+    ///
+    /// Grants permission for a subject to access a resource.
+    pub fn grant(&mut self, grant: crate::acl::Grant) -> Result<(), EngineError> {
+        if let Some(acl) = &mut self.acl {
+            acl.grant(grant)?;
+            Ok(())
+        } else {
+            Err(EngineError::Configuration("ACL not enabled".into()))
+        }
+    }
+    
+    /// Check ACL access
+    ///
+    /// Returns true if the requester has the specified permission.
+    pub fn check_access(&self, params: CheckParams) -> Result<bool, EngineError> {
+        if let Some(acl) = &self.acl {
+            Ok(acl.check(&params)?)
+        } else {
+            Ok(true) // No ACL = always allowed
+        }
+    }
+    
+    /// Revoke ACL access
+    ///
+    /// Revokes permission for a subject to access a resource.
+    pub fn revoke(&mut self, params: crate::acl::RevokeParams) -> Result<(), EngineError> {
+        if let Some(acl) = &mut self.acl {
+            acl.revoke(&params)?;
+            Ok(())
+        } else {
+            Err(EngineError::Configuration("ACL not enabled".into()))
+        }
+    }
+    
+    /// List all grants for a subject
+    ///
+    /// Returns all active (non-expired) grants for the given subject OID.
+    pub fn list_grants(&self, subject_oid: &str) -> Result<Vec<crate::acl::Grant>, EngineError> {
+        if let Some(acl) = &self.acl {
+            Ok(acl.list_grants(subject_oid)?)
+        } else {
+            Ok(vec![])
+        }
     }
     
     /// Check if storage is enabled
@@ -439,7 +536,8 @@ mod tests {
             }),
         );
 
-        let _hash = engine.append_record(record).unwrap();
+        let ctx = RequestContext::new("oid:onoal:system:test".into());
+        let _hash = engine.append_record(record, &ctx).unwrap();
 
         assert!(!engine.is_empty());
         assert_eq!(engine.len(), 1);
@@ -462,7 +560,8 @@ mod tests {
             }),
         );
 
-        let hash = engine.append_record(record.clone()).unwrap();
+        let ctx = RequestContext::new("oid:onoal:system:test".into());
+        let hash = engine.append_record(record.clone(), &ctx).unwrap();
         let retrieved = engine.get_record(&hash);
 
         assert!(retrieved.is_some());
@@ -474,6 +573,7 @@ mod tests {
         let config = create_test_config();
         let mut engine = LedgerEngine::new(config).unwrap();
 
+        let ctx = RequestContext::new("oid:onoal:system:test".into());
         for i in 0..5 {
             let record = Record::new(
                 format!("record-{}", i),
@@ -486,7 +586,7 @@ mod tests {
                     "index": i,
                 }),
             );
-            engine.append_record(record).unwrap();
+            engine.append_record(record, &ctx).unwrap();
         }
 
         // Verify chain

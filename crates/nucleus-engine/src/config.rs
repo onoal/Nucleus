@@ -21,6 +21,16 @@ pub enum StorageConfig {
     },
 }
 
+/// ACL (Access Control List) configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum AclConfig {
+    /// No ACL (all operations allowed)
+    None,
+    
+    /// In-memory ACL
+    InMemory,
+}
+
 /// Ledger engine configuration
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct LedgerConfig {
@@ -35,6 +45,9 @@ pub struct LedgerConfig {
     
     /// Storage configuration
     pub storage: StorageConfig,
+    
+    /// ACL configuration
+    pub acl: AclConfig,
 }
 
 /// Optional configuration options
@@ -51,23 +64,25 @@ pub struct ConfigOptions {
 }
 
 impl LedgerConfig {
-    /// Create a new ledger config (in-memory only)
+    /// Create a new ledger config (in-memory only, no ACL)
     pub fn new(id: String) -> Self {
         Self {
             id,
             modules: Vec::new(),
             options: None,
             storage: StorageConfig::None,
+            acl: AclConfig::None,
         }
     }
 
-    /// Create a new ledger config with modules (in-memory only)
+    /// Create a new ledger config with modules (in-memory only, no ACL)
     pub fn with_modules(id: String, modules: Vec<ModuleConfig>) -> Self {
         Self {
             id,
             modules,
             options: None,
             storage: StorageConfig::None,
+            acl: AclConfig::None,
         }
     }
     
@@ -78,6 +93,7 @@ impl LedgerConfig {
             modules: Vec::new(),
             options: None,
             storage: StorageConfig::Sqlite { path: path.into() },
+            acl: AclConfig::None,
         }
     }
 
@@ -96,6 +112,12 @@ impl LedgerConfig {
     /// Set storage configuration
     pub fn with_storage(mut self, storage: StorageConfig) -> Self {
         self.storage = storage;
+        self
+    }
+    
+    /// Set ACL configuration
+    pub fn with_acl(mut self, acl: AclConfig) -> Self {
+        self.acl = acl;
         self
     }
 

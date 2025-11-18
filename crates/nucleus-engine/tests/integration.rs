@@ -1,6 +1,10 @@
 use nucleus_engine::{LedgerEngine, LedgerConfig, QueryFilters};
 use nucleus_core::module::ModuleConfig;
-use nucleus_core::Record;
+use nucleus_core::{Record, RequestContext};
+
+fn create_test_context() -> RequestContext {
+    RequestContext::new("oid:onoal:system:test".to_string())
+}
 
 fn create_test_config() -> LedgerConfig {
     LedgerConfig::with_modules(
@@ -48,7 +52,7 @@ fn test_engine_append_and_verify() {
                 "issuer_oid": "oid:onoal:org:example",
             }),
         );
-        engine.append_record(record).unwrap();
+        engine.append_record(record, &create_test_context()).unwrap();
     }
 
     // Verify chain
@@ -73,7 +77,7 @@ fn test_engine_query_integration() {
                 "issuer_oid": "oid:onoal:org:example",
             }),
         );
-        engine.append_record(record).unwrap();
+        engine.append_record(record, &create_test_context()).unwrap();
     }
 
     for i in 0..3 {
@@ -86,7 +90,7 @@ fn test_engine_query_integration() {
                 "owner_oid": "oid:onoal:human:bob",
             }),
         );
-        engine.append_record(record).unwrap();
+        engine.append_record(record, &create_test_context()).unwrap();
     }
 
     // Query proofs
@@ -124,7 +128,7 @@ fn test_engine_batch_append_integration() {
         })
         .collect();
 
-    let hashes = engine.append_batch(records).unwrap();
+    let hashes = engine.append_batch(records, &create_test_context()).unwrap();
 
     assert_eq!(hashes.len(), 5);
     assert_eq!(engine.len(), 5);

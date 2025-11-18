@@ -35,3 +35,5 @@ export type {
   ModuleMetadata,
   ModuleState,
 } from "./ledger";
+
+export type { Grant, CheckParams, RevokeParams, AclConfig } from "./acl";

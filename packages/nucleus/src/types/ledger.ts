@@ -1,6 +1,7 @@
 import type { ModuleConfig } from "./module";
 import type { BackendConfig } from "./backend";
 import type { LedgerRecord, QueryFilters, QueryResult } from "./record";
+import type { Grant, CheckParams, RevokeParams, AclConfig } from "./acl";
 
 /**
  * Storage configuration
@@ -48,6 +49,17 @@ export interface LedgerConfig {
    * - For browser persistence, consider IndexedDB wrapper (future)
    */
   storage?: StorageConfig;
+
+  /**
+   * ACL (Access Control List) configuration
+   *
+   * Default: "none" (all operations allowed)
+   *
+   * **Options**:
+   * - "none": No ACL (all operations allowed)
+   * - "inMemory": In-memory ACL (engine-enforced access control)
+   */
+  acl?: AclConfig;
 }
 
 /**
@@ -81,8 +93,11 @@ export interface Ledger {
 
   /**
    * Append a record to the ledger
+   * @param record The record to append
+   * @param context Request context (required for security)
+   * @returns Hash of the appended record
    */
-  append(record: LedgerRecord): Promise<string>;
+  append(record: LedgerRecord, context: RequestContext): Promise<string>;
 
   /**
    * Get a record by hash
@@ -101,8 +116,14 @@ export interface Ledger {
 
   /**
    * Append multiple records atomically
+   * @param records Array of records to append
+   * @param context Request context (required for security)
+   * @returns Array of hashes
    */
-  appendBatch(records: LedgerRecord[]): Promise<string[]>;
+  appendBatch(
+    records: LedgerRecord[],
+    context: RequestContext
+  ): Promise<string[]>;
 
   /**
    * Verify chain integrity
@@ -202,6 +223,91 @@ export interface Ledger {
      * ```
      */
     getState(id: string): Promise<ModuleState | null>;
+  };
+
+  /**
+   * ACL (Access Control List) namespace
+   *
+   * Engine-side access control management (delegated to Rust engine).
+   * All operations are managed by the Rust engine.
+   *
+   * **Note**: Only available if ACL is enabled in ledger config.
+   * If ACL is disabled (default), all operations will succeed/return empty.
+   */
+  readonly acl: {
+    /**
+     * Grant access to a resource
+     *
+     * @param grant - Grant parameters
+     *
+     * @example
+     * ```ts
+     * await ledger.acl.grant({
+     *   subjectOid: "oid:onoal:human:alice",
+     *   resourceOid: "oid:onoal:ledger:my-ledger",
+     *   action: "write",
+     *   grantedBy: "oid:onoal:system:admin",
+     *   grantedAt: Date.now() / 1000, // Unix timestamp in seconds
+     * });
+     * ```
+     */
+    grant(grant: Grant): Promise<void>;
+
+    /**
+     * Check if access is allowed
+     *
+     * @param params - Check parameters
+     * @returns True if access is granted, false otherwise
+     *
+     * @example
+     * ```ts
+     * const allowed = await ledger.acl.check({
+     *   requesterOid: "oid:onoal:human:alice",
+     *   resourceOid: "oid:onoal:ledger:my-ledger",
+     *   action: "write",
+     * });
+     * ```
+     */
+    check(params: CheckParams): Promise<boolean>;
+
+    /**
+     * Revoke access to a resource
+     *
+     * @param params - Revoke parameters
+     *
+     * @example
+     * ```ts
+     * await ledger.acl.revoke({
+     *   subjectOid: "oid:onoal:human:alice",
+     *   resourceOid: "oid:onoal:ledger:my-ledger",
+     *   action: "write",
+     * });
+     * ```
+     */
+    revoke(params: RevokeParams): Promise<void>;
+
+    /**
+     * List all grants for a subject
+     *
+     * @param subjectOid - Subject OID
+     * @returns Array of active grants
+     *
+     * @example
+     * ```ts
+     * const grants = await ledger.acl.listGrants("oid:onoal:human:alice");
+     * console.log(grants);
+     * // [
+     * //   {
+     * //     subjectOid: "oid:onoal:human:alice",
+     * //     resourceOid: "oid:onoal:ledger:my-ledger",
+     * //     action: "write",
+     * //     grantedBy: "oid:onoal:system:admin",
+     * //     grantedAt: 1234567890
+     * //   }
+     * // ]
+     * ```
+     */
+    listGrants(subjectOid: string): Promise<Grant[]>;
   };
 }
 

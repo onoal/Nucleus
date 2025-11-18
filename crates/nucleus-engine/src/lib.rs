@@ -24,13 +24,17 @@ pub mod error;
 /// Storage backend for persistence
 pub mod storage;
 
+/// ACL (Access Control List) module
+pub mod acl;
+
 // Re-export commonly used types
 pub use engine::LedgerEngine;
-pub use config::{LedgerConfig, StorageConfig, ConfigOptions};
+pub use config::{LedgerConfig, StorageConfig, AclConfig, ConfigOptions};
 pub use error::EngineError;
 pub use query::{QueryFilters, QueryResult};
 pub use storage::{StorageBackend, StorageError, StorageResult};
 pub use module_registry::{ModuleRegistry, ModuleMeta};
+pub use acl::{Grant, CheckParams, RevokeParams, AclBackend, InMemoryAcl, AclError, AclResult};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use storage::SqliteStorage;

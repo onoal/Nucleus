@@ -163,7 +163,10 @@ impl RequestContext {
         
         #[cfg(target_arch = "wasm32")]
         {
-            js_sys::Date::now() as u64
+            // For WASM builds, timestamp is set to 0 by default.
+            // The WASM bindings layer should fill in the actual timestamp
+            // from the JavaScript Date.now() when creating the context.
+            0
         }
     }
 }
