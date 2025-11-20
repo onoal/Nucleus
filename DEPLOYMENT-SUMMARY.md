@@ -64,7 +64,7 @@ git add .
 git commit -F COMMIT_MESSAGE.md
 
 # 3. Tag the release
-git tag -a v0.1.0-beta.0 -m "Release v0.1.0-beta.0: Initial beta release"
+git tag -a v0.1.0-beta -m "Release v0.1.0-beta: Initial beta release"
 
 # 4. Push to remote (including tags)
 git push origin main --tags
