@@ -1,0 +1,41 @@
+# CODEOWNERS file for Nucleus
+# 
+# This file defines individuals or teams that are responsible for code in this repository.
+# Code owners are automatically requested for review when someone opens a pull request that modifies code they own.
+#
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owner for everything in the repo
+* @onoal/nucleus-core
+
+# Rust WASM Core
+/packages/nucleus-core-rs/ @onoal/nucleus-core @onoal/rust-maintainers
+
+# TypeScript SDK Core
+/packages/nucleus/src/core/ @onoal/nucleus-core
+
+# Security-critical modules
+/packages/nucleus/src/modules/oid/ @onoal/nucleus-core @onoal/security-reviewers
+/packages/nucleus/src/modules/proof/ @onoal/nucleus-core @onoal/security-reviewers
+
+# Storage adapters
+/packages/nucleus/src/storage-sqlite/ @onoal/nucleus-core @onoal/storage-maintainers
+
+# Documentation
+/docs/ @onoal/nucleus-docs
+/*.md @onoal/nucleus-docs
+/SECURITY.md @onoal/nucleus-core @onoal/security-reviewers
+
+# Configuration files
+/.github/ @onoal/nucleus-core
+/package.json @onoal/nucleus-core
+/turbo.json @onoal/nucleus-core
+/tsconfig*.json @onoal/nucleus-core
+
+# Examples
+/examples/ @onoal/nucleus-docs
+
+# Tests
+**/*.test.ts @onoal/nucleus-core
+**/*.spec.ts @onoal/nucleus-core
+
