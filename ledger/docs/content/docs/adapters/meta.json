@@ -1,6 +1,0 @@
-{
-  "title": "Adapters",
-  "description": "Database adapters for Ledger Framework",
-  "defaultOpen": false,
-  "pages": ["sqlite", "postgres", "d1"]
-}

@@ -1,47 +1,71 @@
 {
   "name": "@onoal/nucleus",
-  "version": "0.1.0",
-  "description": "Nucleus Engine - TypeScript DX Layer for building custom ledgers",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "0.1.0-beta",
+  "description": "Minimal ledger system for OID-based verifiable records",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./storage-sqlite": {
+      "types": "./dist/storage-sqlite/index.d.ts",
+      "import": "./dist/storage-sqlite/index.js"
+    }
+  },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "dev": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --noEmit"
+    "build:wasm": "cd ../nucleus-core-rs && ./build.sh",
+    "build:ts": "tsc",
+    "build": "pnpm run build:wasm && pnpm run build:ts",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "npx eslint src --ext .ts",
+    "clean": "rm -rf dist src/wasm"
   },
   "dependencies": {
-    "@onoal/nucleus-wasm": "workspace:*"
+    "better-sqlite3": "^9.2.2",
+    "@onoal/oid-core": "^0.1.0"
   },
   "devDependencies": {
-    "@types/jest": "^29.0.0",
-    "@types/node": "^20.0.0",
-    "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.0.0",
-    "jest": "^29.0.0",
-    "ts-jest": "^29.0.0",
-    "typescript": "^5.0.0"
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4"
   },
   "peerDependencies": {
-    "@onoal/nucleus-wasm": "^0.1.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/onoal/nucleus"
+    "@onoal/oid-core": "^0.1.0"
   },
   "keywords": [
     "ledger",
+    "oid",
+    "verifiable",
+    "append-only",
     "blockchain",
-    "nucleus",
-    "typescript"
+    "identity",
+    "cryptographic",
+    "proof",
+    "attestation",
+    "decentralized"
   ],
-  "author": "Onoal Team",
-  "license": "MIT"
+  "author": "ONOAL",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/onoal/nucleus.git",
+    "directory": "packages/nucleus"
+  },
+  "bugs": {
+    "url": "https://github.com/onoal/nucleus/issues"
+  },
+  "homepage": "https://github.com/onoal/nucleus#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }

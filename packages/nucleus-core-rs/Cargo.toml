@@ -1,0 +1,25 @@
+[package]
+name = "nucleus-core-rs"
+version = "0.1.0-beta"
+edition = "2021"
+authors = ["ONOAL"]
+description = "Rust core for Nucleus: canonical JSON + hashing"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+wasm-bindgen = "0.2"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde-wasm-bindgen = "0.6"
+sha2 = "0.10"
+base64 = "0.21"
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3"
+
+[profile.release]
+opt-level = "z"
+lto = true
+

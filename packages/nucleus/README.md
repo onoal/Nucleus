@@ -1,164 +1,96 @@
 # @onoal/nucleus
 
-TypeScript DX Layer for Nucleus Engine - A developer-friendly API for building custom ledgers powered by Rust.
+Minimal ledger system for OID-based verifiable records.
 
 ## Installation
 
 ```bash
-npm install @onoal/nucleus @onoal/nucleus-wasm
+npm install @onoal/nucleus
+# or
+pnpm add @onoal/nucleus
+```
+
+### SQLite Native Dependencies
+
+The SQLite storage adapter uses `better-sqlite3`, which requires native compilation. If you encounter build issues:
+
+**Option 1: Pre-built binaries (recommended)**
+
+```bash
+pnpm install --ignore-scripts=false
+```
+
+**Option 2: Build from source**
+Requires:
+
+- Node.js build tools (`node-gyp`)
+- Python 3.x with `setuptools`
+- C++ compiler (XCode on macOS, build-essential on Linux)
+
+```bash
+# macOS
+python3 -m pip install --break-system-packages setuptools
+
+# Linux
+sudo apt-get install build-essential python3-setuptools
+```
+
+**Option 3: Skip SQLite tests**
+All core functionality works without building better-sqlite3. Only storage tests require native builds:
+
+```bash
+pnpm test src/modules src/core  # Skip storage tests
 ```
 
 ## Quick Start
 
-### Using Factory Pattern
-
 ```typescript
-import { createLedger, proofModule, assetModule } from "@onoal/nucleus";
+import {
+  createNucleus,
+  registerModule,
+  oidModule,
+  proofModule,
+  SQLiteRecordStore,
+} from "@onoal/nucleus";
 
-// Create a ledger
-const ledger = await createLedger({
-  id: "my-ledger",
-  backend: {
-    mode: "wasm",
-  },
-  modules: [proofModule(), assetModule({ name: "tickets" })],
-});
+// Initialize storage
+const store = new SQLiteRecordStore(":memory:");
+
+// Register modules
+registerModule("oid", oidModule);
+registerModule("proof", proofModule);
+
+// Create nucleus instance
+const nucleus = await createNucleus({ store });
 
 // Append a record
-const hash = await ledger.append({
-  id: "record-1",
-  stream: "proofs",
-  timestamp: Date.now(),
-  payload: {
-    type: "proof",
-    subject_oid: "oid:onoal:human:alice",
-    issuer_oid: "oid:onoal:org:example",
+const result = await nucleus.append({
+  module: "oid",
+  chainId: "oid:onoal:user:alice",
+  body: {
+    /* your data */
   },
 });
-
-// Query records
-const results = await ledger.query({
-  stream: "proofs",
-  limit: 10,
-});
-
-// Verify chain
-await ledger.verify();
 ```
 
-### Using Builder Pattern
+## Documentation
 
-```typescript
-import { ledgerBuilder, proofModule, assetModule } from "@onoal/nucleus";
+See [examples/basic-usage.ts](../../examples/basic-usage.ts) for complete examples.
 
-// Create a ledger using fluent API
-const ledger = await ledgerBuilder("my-ledger")
-  .withWasmBackend()
-  .withModule(proofModule())
-  .withModule(assetModule({ name: "tickets" }))
-  .withStrictValidation()
-  .withMaxEntries(1000)
-  .withMetrics()
-  .build();
-```
-
-## API Reference
-
-### `createLedger(config: LedgerConfig): Promise<Ledger>`
-
-Creates a new ledger instance.
-
-**Parameters:**
-
-- `config.id` - Unique ledger identifier
-- `config.backend` - Backend configuration (WASM or HTTP)
-- `config.modules` - Array of module configurations
-- `config.options` - Optional ledger options
-
-**Returns:** Promise resolving to a `Ledger` instance
-
-### `ledgerBuilder(id: string): LedgerBuilder`
-
-Creates a new ledger builder for fluent API configuration.
-
-**Methods:**
-
-- `.withWasmBackend(wasmPath?)` - Configure WASM backend
-- `.withHttpBackend(url, token?)` - Configure HTTP backend
-- `.withModule(module)` - Add a module
-- `.withModules(modules[])` - Add multiple modules
-- `.withStrictValidation(strict?)` - Enable strict validation
-- `.withMaxEntries(max)` - Set maximum entries
-- `.withMetrics(enabled?)` - Enable metrics
-- `.build()` - Build and create ledger instance
-
-### Module Helpers
-
-#### `proofModule(config?: ProofModuleConfig): ModuleConfig`
-
-Creates a proof module configuration.
-
-```typescript
-const module = proofModule({
-  strategies: ["ownership", "timestamp"],
-});
-```
-
-#### `assetModule(config?: AssetModuleConfig): ModuleConfig`
-
-Creates an asset module configuration.
-
-```typescript
-const module = assetModule({
-  name: "tickets",
-  indexBy: ["owner_oid"],
-});
-```
-
-### Ledger Interface
-
-```typescript
-interface Ledger {
-  readonly id: string;
-  append(record: Record): Promise<string>;
-  get(hash: string): Promise<Record | null>;
-  getById(id: string): Promise<Record | null>;
-  query(filters: QueryFilters): Promise<QueryResult>;
-  appendBatch(records: Record[]): Promise<string[]>;
-  verify(): Promise<void>;
-  length(): Promise<number>;
-  isEmpty(): Promise<boolean>;
-  latestHash(): Promise<string | null>;
-}
-```
-
-## Examples
-
-See the `examples/` directory for complete usage examples:
-
-- `basic-usage.ts` - Basic ledger operations
-- `builder-pattern.ts` - Using the builder pattern
-
-## Architecture
-
-The Nucleus Engine follows a layered architecture:
-
-1. **Rust Core** (`nucleus-core`) - Pure ledger engine logic
-2. **Rust Engine** (`nucleus-engine`) - Runtime wrapper
-3. **WASM Bindings** (`nucleus-wasm`) - WebAssembly bindings
-4. **TypeScript DX** (`@onoal/nucleus`) - Developer-friendly API
-
-## Testing
+## Development
 
 ```bash
-# Run tests
-npm test
+# Build
+pnpm build
 
-# Run tests in watch mode
-npm run test:watch
+# Test (core only, no SQLite)
+pnpm test src/modules src/core
 
-# Type check
-npm run typecheck
+# Test (all, requires better-sqlite3 build)
+pnpm test
+
+# Lint
+pnpm lint
 ```
 
 ## License

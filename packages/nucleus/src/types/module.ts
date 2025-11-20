@@ -1,64 +1,54 @@
 /**
- * Module configuration
+ * Module runtime interface for Nucleus
  */
-export interface ModuleConfig {
-  /**
-   * Module identifier
-   */
-  id: string;
 
-  /**
-   * Module version
-   */
-  version: string;
+import type { NucleusRecord, ValidationResult, ValidationContext } from "./core.js";
 
+/**
+ * Module runtime: validates records according to module-specific rules
+ * 
+ * Each module implements this interface to provide validation logic
+ * that runs during append operations.
+ */
+export interface ModuleRuntime {
   /**
-   * Module-specific configuration
+   * Validate a record before it's stored
+   * 
+   * @param input Validation input
+   * @returns Validation result (ok: true if valid, ok: false with error details if invalid)
    */
-  config: Record<string, unknown>;
+  validateRecord(input: {
+    /** Record to validate (already has hash computed) */
+    record: NucleusRecord;
+    
+    /** Previous record in chain (null for genesis) */
+    prevRecord: NucleusRecord | null;
+    
+    /** Execution context */
+    context: ValidationContext;
+  }): Promise<ValidationResult>;
 }
 
 /**
- * Module factory function type
+ * Error thrown when module is not registered
  */
-export type ModuleFactory = (config?: Record<string, unknown>) => ModuleConfig;
-
-/**
- * Asset module configuration
- */
-export interface AssetModuleConfig {
-  /**
-   * Asset name/identifier
-   */
-  name?: string;
-
-  /**
-   * Schema definition (optional)
-   */
-  schema?: Record<string, unknown>;
-
-  /**
-   * Fields to index by
-   */
-  indexBy?: string[];
-
-  /**
-   * Allow additional properties
-   */
-  [key: string]: unknown;
+export class ModuleNotFoundError extends Error {
+  constructor(moduleName: string) {
+    super(`Module not registered: ${moduleName}`);
+    this.name = "ModuleNotFoundError";
+  }
 }
 
 /**
- * Proof module configuration
+ * Error thrown when module validation fails
  */
-export interface ProofModuleConfig {
-  /**
-   * Proof strategies
-   */
-  strategies?: string[];
-
-  /**
-   * Allow additional properties
-   */
-  [key: string]: unknown;
+export class ValidationError extends Error {
+  constructor(
+    message: string,
+    public readonly errorCode: string
+  ) {
+    super(message);
+    this.name = "ValidationError";
+  }
 }
+

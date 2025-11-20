@@ -1,6 +1,0 @@
-{
-  "title": "Plugins",
-  "description": "Extend Ledger Framework with plugins",
-  "defaultOpen": false,
-  "pages": ["webhook", "validation", "indexing"]
-}

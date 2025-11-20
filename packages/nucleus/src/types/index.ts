@@ -1,30 +1,25 @@
 /**
- * Type exports
+ * Type definitions for Nucleus ledger system
  */
 
+// Core types
 export type {
-  LedgerRecord,
-  RecordPayload,
-  RecordMetadata,
-  QueryFilters,
-  QueryResult,
-} from "./record";
+  ModuleName,
+  NucleusRecord,
+  AppendInput,
+  AppendContext,
+  GetChainOpts,
+  ValidationResult,
+  ValidationContext,
+} from "./core.js";
 
-// Re-export as Record for convenience (but use LedgerRecord internally)
-export type { LedgerRecord as Record } from "./record";
+export { NUCLEUS_SCHEMA_VERSION, isNucleusRecord } from "./core.js";
 
-export type {
-  ModuleConfig,
-  ModuleFactory,
-  AssetModuleConfig,
-  ProofModuleConfig,
-} from "./module";
+// Storage types
+export type { RecordStore } from "./storage.js";
+export { StorageConstraintError } from "./storage.js";
 
-export type {
-  BackendMode,
-  BackendConfig,
-  WasmBackendConfig,
-  HttpBackendConfig,
-} from "./backend";
+// Module types
+export type { ModuleRuntime } from "./module.js";
+export { ModuleNotFoundError, ValidationError } from "./module.js";
 
-export type { LedgerConfig, LedgerOptions, Ledger } from "./ledger";
