@@ -1,6 +1,6 @@
 {
   "name": "@onoal/nucleus",
-  "version": "0.1.0-beta",
+  "version": "0.1.1-beta",
   "description": "Minimal ledger system for OID-based verifiable records",
   "type": "module",
   "main": "./dist/index.js",
