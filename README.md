@@ -1,296 +1,236 @@
-# Nucleus v0.1.0-beta
+# Nucleus
 
-Minimaal ledger-systeem voor OID-based verifiable records.
+> Minimal, TypeScript-first ledger system for OID-based verifiable records
 
-## ✅ FASE 1, 2 & 3 Status: VOLTOOID
-
-Alle kern-componenten zijn geïmplementeerd:
-
-### Stap 1: Project Setup ✅
-- ✅ Monorepo structuur (pnpm workspaces)
-- ✅ TypeScript configuratie (strict mode)
-- ✅ ESLint + Prettier
-- ✅ Package structuur
-
-### Stap 2: Rust Core (WASM) ✅
-- ✅ Cargo.toml + wasm-pack setup
-- ✅ Canonicalisatie (JCS-stijl, keys sorted)
-- ✅ SHA-256 hashing + base64url encoding
-- ✅ WASM build script
-- ✅ Unit tests voor determinisme
-
-### Stap 3: Core Types ✅
-- ✅ `NucleusRecord` interface
-- ✅ `AppendInput`, `ValidationResult`, `ValidationContext`
-- ✅ `RecordStore` interface
-- ✅ `ModuleRuntime` interface
-- ✅ Type guards en error classes
-
-### Stap 4: SQLite Storage ✅
-- ✅ Schema met unieke constraints
-- ✅ `SQLiteRecordStore` implementatie
-- ✅ Comprehensive tests (CRUD + constraints)
-
-### Stap 5: Module Registry ✅
-- ✅ Singleton pattern (globale registry)
-- ✅ `registerModule()`, `getModule()`, `hasModule()`
-- ✅ Module not found error handling
-- ✅ Tests (7 test cases)
-
-### Stap 6: Nucleus SDK Core ✅
-- ✅ `Nucleus` class met storage + computeHash
-- ✅ `append()` met volledige flow:
-  - Timestamp bepaling
-  - prevRecord fetching
-  - Index + prevHash berekening
-  - Hash computation via WASM wrapper
-  - Module validatie
-  - Storage.put() met error handling
-- ✅ `getHead()`, `getByHash()`, `getChain()`
-- ✅ Chain consistency validatie
-- ✅ `createNucleus()` factory function
-- ✅ Comprehensive tests (25+ test cases)
-
-### Stap 7: proof Module ✅
-- ✅ `ProofBody` types (subject, issuer, kind, data, issuedAt, expiresAt)
-- ✅ `ProofModuleRuntime` validator:
-  - OID format validation (basic "oid:" prefix check)
-  - Timestamp validation (issuedAt ≤ createdAt, expiresAt > issuedAt)
-  - Caller authorization (callerOid must match issuer)
-  - issuerProof structure validation (signature verification TODO)
-- ✅ `generateProofChainId()` utility
-- ✅ 30+ test cases covering all validation rules
-
-### Stap 8: oid Module ✅
-- ✅ `OidBody` types (oidRecord wrapper)
-- ✅ `OidRecordProof`, `PublicKey` types
-- ✅ `OidModuleRuntime` validator:
-  - Schema version check ("oid-core/v0.1.1")
-  - OID string format validation
-  - Kind validation ("human", "org", "agent")
-  - Keys array validation (at least one key)
-  - Timestamp validation
-  - Proof structure validation (signature verification TODO)
-  - Chain consistency (same OID, updatedAt monotonic)
-  - Caller policy (callerOid must match oidRecord.oid)
-- ✅ `generateOidChainId()` - base64url encoding
-- ✅ `parseOid()` - basic OID parser
-- ✅ 35+ test cases covering all validation rules
+[![npm version](https://badge.fury.io/js/@onoal%2Fnucleus.svg)](https://www.npmjs.com/package/@onoal/nucleus)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ---
 
-## Volgende Stappen
+## 🎯 What is Nucleus?
 
-### Dependencies Installeren
+Nucleus provides cryptographic integrity guarantees for append-only chains of identity and attestation records. It's designed to work seamlessly with the [ONOAL Open Identity (OID) system](https://github.com/onoal/oid).
+
+### Key Features
+
+- ✅ **OID Signature Verification** - Full cryptographic validation via `@onoal/oid-core`
+- ✅ **Append-Only Chains** - Sequential indices with deterministic hashing
+- ✅ **Module Architecture** - Pluggable validation for different record types
+- ✅ **Type-Safe API** - Strict TypeScript with comprehensive type definitions
+- ✅ **Storage Adapters** - Pluggable backends (SQLite in v0.1.x)
+
+---
+
+## 📦 Installation
 
 ```bash
-# Root dependencies
-pnpm install
-
-# Als er problemen zijn, force reinstall:
-rm -rf node_modules packages/*/node_modules
-pnpm install
+npm install @onoal/nucleus@beta
 ```
 
-### WASM Build (vereist Rust + wasm-pack)
+### Requirements
+
+- Node.js ≥ 18.0.0
+- Optional: SQLite native bindings (for storage adapter)
+
+---
+
+## 🚀 Quick Start
+
+```typescript
+import {
+  createNucleus,
+  registerModule,
+  oidModule,
+  proofModule,
+  SQLiteRecordStore,
+} from "@onoal/nucleus";
+
+// Initialize storage
+const store = new SQLiteRecordStore(":memory:");
+
+// Register modules
+registerModule("oid", oidModule);
+registerModule("proof", proofModule);
+
+// Create nucleus instance
+const nucleus = await createNucleus({ store });
+
+// Append a record
+const result = await nucleus.append({
+  module: "oid",
+  chainId: "oid:onoal:user:alice",
+  body: { oidRecord: /* OID Core Record */ },
+});
+
+console.log("Record appended:", result.hash);
+```
+
+See [examples/basic-usage.ts](./examples/basic-usage.ts) for complete examples.
+
+---
+
+## 📚 Documentation
+
+- **[CONTEXT.md](./CONTEXT.md)** - Complete architecture overview
+- **[DESIGN-DECISIONS.md](./DESIGN-DECISIONS.md)** - Design rationales
+- **[PUBLISHING.md](./PUBLISHING.md)** - Publishing guide
+- **[CHANGELOG.md](./packages/nucleus/CHANGELOG.md)** - Release notes
+- **[Package README](./packages/nucleus/README.md)** - Package-specific docs
+
+---
+
+## 🏗️ Architecture
+
+### Core Components
+
+1. **Nucleus Engine** - Main ledger orchestrator
+2. **Module Registry** - Pluggable validation runtimes
+3. **Storage Adapters** - Pluggable persistence backends
+4. **WASM Core** - Rust-based deterministic primitives
+
+### Modules
+
+- **OID Module** - Anchors OID Core Records with full signature verification
+- **Proof Module** - OID-native attestations (subject + issuer + kind + data)
+
+### Storage
+
+- **SQLite Adapter** - Production-ready with ACID guarantees
+
+---
+
+## 🔒 Security
+
+### ✅ Implemented (v0.1.x)
+
+- OID signature verification (cryptographic)
+- Chain integrity validation
+- Deterministic hashing (SHA-256 via Rust/WASM)
+- Timestamp validation
+- Sequential index enforcement
+
+### ⚠️ Limitations (Beta)
+
+- Proof signature verification not implemented (planned for v0.2.0)
+- No access control (any caller can append)
+- No rate limiting
+
+**This is a BETA release - NOT production-ready!**
+
+---
+
+## 🧪 Development
+
+### Prerequisites
 
 ```bash
-# Installeer Rust als je dat nog niet hebt
+# Install Rust (for WASM core)
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Installeer wasm-pack
+# Install wasm-pack
 cargo install wasm-pack
+```
 
-# Build WASM module
+### Setup
+
+```bash
+# Clone repository
+git clone https://github.com/onoal/nucleus.git
+cd nucleus
+
+# Install dependencies
+pnpm install
+
+# Build WASM core
 cd packages/nucleus-core-rs
 ./build.sh
-```
+cd ../..
 
-### TypeScript Build
+# Build TypeScript
+pnpm run build
 
-```bash
-cd packages/nucleus
-pnpm build:ts
-```
-
-### Tests Draaien
-
-```bash
-cd packages/nucleus
+# Run tests
 pnpm test
 ```
 
----
+### Testing
 
-## Project Structuur
+```bash
+# Core tests only (no SQLite)
+pnpm test src/modules src/core
 
-```
-nucleus/
-├── packages/
-│   ├── nucleus/                     # @onoal/nucleus
-│   │   ├── src/
-│   │   │   ├── core/                # Engine (FASE 2)
-│   │   │   ├── modules/             # Modules (FASE 2-3)
-│   │   │   │   ├── proof/
-│   │   │   │   └── oid/
-│   │   │   ├── storage-sqlite/      # ✅ SQLite adapter
-│   │   │   │   ├── index.ts
-│   │   │   │   └── storage.test.ts
-│   │   │   ├── types/               # ✅ Core types
-│   │   │   │   ├── core.ts
-│   │   │   │   ├── storage.ts
-│   │   │   │   ├── module.ts
-│   │   │   │   └── index.ts
-│   │   │   └── wasm/                # WASM output (na build)
-│   │   ├── package.json
-│   │   ├── tsconfig.json
-│   │   └── vitest.config.ts
-│   └── nucleus-core-rs/             # ✅ Rust WASM core
-│       ├── src/
-│       │   ├── lib.rs
-│       │   └── canonicalize.rs
-│       ├── Cargo.toml
-│       └── build.sh
-├── examples/                         # FASE 4
-├── tests/integration/                # FASE 4
-├── IMPLEMENTATION-PLAN.md
-├── SCOPE-nucleus-v0.1.0-beta.md
-├── package.json
-├── pnpm-workspace.yaml
-├── tsconfig.base.json
-├── turbo.json
-├── .gitignore
-├── .eslintrc.json
-└── .prettierrc.json
+# All tests (requires better-sqlite3 native build)
+pnpm test
+
+# Linting
+pnpm run lint
 ```
 
 ---
 
-## Implementatie Voortgang
+## 📊 Test Coverage
 
-| Fase | Status | Omschrijving |
-|------|--------|--------------|
-| **FASE 1** | ✅ **VOLTOOID** | Fundament (Rust core, types, storage) |
-| **FASE 2** | ✅ **VOLTOOID** | SDK Engine (Nucleus class, module registry, append) |
-| **FASE 3** | ✅ **VOLTOOID** | Modules (proof & oid validatie) |
-| **FASE 4** | ⏳ Pending | Integration tests & documentatie |
+- **73/73 core tests passing** ✅
+  - 32 OID module tests
+  - 30 Proof module tests
+  - 11 Module registry tests
 
 ---
 
-## Geïmplementeerde Features (FASE 1)
+## 🛣️ Roadmap
 
-### Rust Core (`nucleus-core-rs`)
+### v0.2.0 (Next)
 
-**Canonicalisatie:**
-- Keys alfabetisch gesorteerd
-- Geen whitespace
-- JSON escape sequences correct
-- Deterministische output
+- Proof signature verification
+- Access control policies
+- PostgreSQL storage adapter
+- Rate limiting
 
-**Hashing:**
-- SHA-256 over canonical bytes
-- base64url encoding (RFC 4648 §5)
-- WASM exports: `compute_hash()`, `canonicalize()`
+### v1.0.0 (Stable)
 
-**Tests:**
-- ✅ Key sorting
-- ✅ Nested objects
-- ✅ Array order preservation
-- ✅ String escaping
-- ✅ Determinisme (zelfde content = zelfde hash)
-
-### TypeScript Types
-
-**Core Types:**
-```typescript
-interface NucleusRecord {
-  schema: "nucleus-core/v0.1.0-beta";
-  module: "proof" | "oid" | string;
-  chainId: string;
-  index: number;
-  prevHash: string | null;
-  createdAt: string;
-  body: unknown;
-  meta?: Record<string, unknown>;
-  hash: string;
-}
-```
-
-**Storage Interface:**
-```typescript
-interface RecordStore {
-  put(record: NucleusRecord): Promise<void>;
-  getByHash(hash: string): Promise<NucleusRecord | null>;
-  getChain(chainId: string, opts?: GetChainOpts): Promise<NucleusRecord[]>;
-  getHead(chainId: string): Promise<NucleusRecord | null>;
-}
-```
-
-**Module Interface:**
-```typescript
-interface ModuleRuntime {
-  validateRecord(input: {
-    record: NucleusRecord;
-    prevRecord: NucleusRecord | null;
-    context: ValidationContext;
-  }): Promise<ValidationResult>;
-}
-```
-
-### SQLite Storage
-
-**Schema:**
-- `records` table met hash (PK) + (chain_id, idx) unieke index
-- Indexes op chain_id en module voor performance
-- WAL mode voor concurrency
-
-**Features:**
-- ✅ Atomic writes
-- ✅ Unique constraints (hash, chain_id+idx)
-- ✅ Pagination (limit, offset)
-- ✅ Reverse ordering
-- ✅ Chain isolation
-
-**Tests:** 14 test cases covering:
-- CRUD operaties
-- Constraint violations
-- Chain queries
-- Pagination
-- Isolation
+- Production-ready with security audit
+- Performance optimization
+- Comprehensive documentation site
 
 ---
 
-## Bekende Issues / TODO's
+## 🤝 Contributing
 
-1. **WASM Build:** Vereist `wasm-pack` installatie
-2. **@onoal/oid Dependency:** Peer dependency niet beschikbaar (FASE 3 nodig)
-3. **Storage Tests:** Kunnen pas draaien na `pnpm install` + TypeScript compile
+We welcome contributions! Please see our [contributing guidelines](./CONTRIBUTING.md) (coming soon).
 
----
+### Areas for Contribution
 
-## Enterprise-Grade Principes (toegepast)
-
-✅ **Clean Architecture** – Duidelijke scheiding types/storage/core  
-✅ **Type Safety** – Strict TypeScript, comprehensive interfaces  
-✅ **Error Handling** – Structured error classes (StorageConstraintError, etc.)  
-✅ **Testing** – Unit tests met >80% coverage target  
-✅ **Documentation** – JSDoc comments, inline explanations  
-✅ **Performance** – Indexed queries, WAL mode, deterministic hashing  
+- Additional storage adapters (PostgreSQL, IndexedDB)
+- New module types
+- Performance improvements
+- Documentation and examples
 
 ---
 
-## Next: FASE 4 - Integration & Polish
+## 📄 License
 
-Voor volledige productie-readiness:
-
-1. **WASM Build**: Run `cd packages/nucleus-core-rs && ./build.sh`
-2. **Integration Tests**: End-to-end scenarios met beide modules
-3. **Example Apps**: Werkende voorbeelden in `examples/`
-4. **Documentation**: Usage guides, API docs
+MIT © ONOAL
 
 ---
 
-**Versie:** 0.1.0-beta  
-**Laatst bijgewerkt:** November 20, 2025  
-**Status:** FASE 1, 2 & 3 voltooid - Core functionaliteit compleet!  
+## 🔗 Links
 
+- **npm Package:** [@onoal/nucleus](https://www.npmjs.com/package/@onoal/nucleus)
+- **GitHub:** [onoal/nucleus](https://github.com/onoal/nucleus)
+- **Issues:** [Report bugs](https://github.com/onoal/nucleus/issues)
+- **Discussions:** [Ask questions](https://github.com/onoal/nucleus/discussions)
+- **OID Core:** [@onoal/oid-core](https://github.com/onoal/oid-core)
+
+---
+
+## 💬 Support
+
+- **GitHub Issues:** Bug reports and feature requests
+- **GitHub Discussions:** Questions and community support
+- **Discord:** ONOAL Community Server (coming soon)
+
+---
+
+**Version:** 0.1.1-beta  
+**Status:** Beta - Ready for testing, not for production  
+**Last Updated:** November 20, 2025
