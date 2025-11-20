@@ -4,6 +4,10 @@
 
 [![npm version](https://badge.fury.io/js/@onoal%2Fnucleus.svg)](https://www.npmjs.com/package/@onoal/nucleus)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.3+-blue)](https://www.typescriptlang.org/)
+[![Test Coverage](https://img.shields.io/badge/coverage-73%2F73%20tests-brightgreen)](./packages/nucleus/src)
+[![Security: Beta](https://img.shields.io/badge/security-beta%20%E2%9A%A0%EF%B8%8F-orange)](./SECURITY.md)
 
 ---
 
@@ -101,21 +105,70 @@ See [examples/basic-usage.ts](./examples/basic-usage.ts) for complete examples.
 
 ## 🔒 Security
 
-### ✅ Implemented (v0.1.x)
-
-- OID signature verification (cryptographic)
-- Chain integrity validation
-- Deterministic hashing (SHA-256 via Rust/WASM)
-- Timestamp validation
-- Sequential index enforcement
-
-### ⚠️ Limitations (Beta)
-
-- Proof signature verification not implemented (planned for v0.2.0)
-- No access control (any caller can append)
-- No rate limiting
+### ⚠️ Beta Security Notice
 
 **This is a BETA release - NOT production-ready!**
+
+Nucleus v0.1.x provides foundational cryptographic integrity but lacks several critical security features. **Do not use for production systems or sensitive data.**
+
+### ✅ Implemented (v0.1.x)
+
+| Feature                        | Status         | Details                                                                |
+| ------------------------------ | -------------- | ---------------------------------------------------------------------- |
+| **OID Signature Verification** | ✅ Implemented | Full cryptographic validation via `@onoal/oid-core` (Ed25519-JCS-2025) |
+| **Chain Integrity**            | ✅ Implemented | SHA-256 hashing with `prevHash` linkage                                |
+| **Deterministic Hashing**      | ✅ Implemented | JCS canonicalization via Rust/WASM                                     |
+| **Timestamp Validation**       | ✅ Implemented | ISO-8601 format + monotonic ordering checks                            |
+| **Sequential Indices**         | ✅ Implemented | Database constraints enforce uniqueness                                |
+| **Type Safety**                | ✅ Implemented | Strict TypeScript with runtime validation                              |
+
+### ❌ Known Limitations (v0.1.x)
+
+| Limitation                       | Impact    | Planned                                                             |
+| -------------------------------- | --------- | ------------------------------------------------------------------- | ------ |
+| **Proof Signature Verification** | ⚠️ HIGH   | Proof records validate structure only, NOT cryptographic signatures | v0.2.0 |
+| **Access Control**               | ⚠️ HIGH   | Any caller can append records (no authentication/authorization)     | v0.2.0 |
+| **Rate Limiting**                | ⚠️ MEDIUM | No protection against spam/abuse                                    | v0.2.0 |
+| **Audit Logging**                | ⚠️ MEDIUM | No built-in audit trail for security events                         | v0.3.0 |
+| **Key Rotation**                 | ⚠️ MEDIUM | No mechanism for rotating compromised keys                          | v0.3.0 |
+| **Revocation**                   | ⚠️ LOW    | No built-in support for revoking records                            | v0.4.0 |
+
+### 🛡️ Security Best Practices
+
+If you choose to experiment with Nucleus in beta:
+
+1. **Do NOT store sensitive data** (PII, credentials, secrets)
+2. **Use isolated environments** (never share databases across trust boundaries)
+3. **Validate all inputs** (never trust user-provided OIDs or chainIds)
+4. **Monitor for abuse** (implement external rate limiting)
+5. **Plan for data migration** (schema may change before v1.0)
+6. **Report security issues** via [security@onoal.org](mailto:security@onoal.org) (not public issues)
+
+### 📋 Security Roadmap
+
+- **v0.2.0** - Proof signatures, access control, rate limiting
+- **v0.3.0** - Audit logging, key rotation
+- **v0.4.0** - Revocation support, compliance tools
+- **v1.0.0** - Third-party security audit before stable release
+
+### 🔐 Cryptographic Dependencies
+
+Nucleus relies on battle-tested cryptographic primitives:
+
+- **SHA-256**: Rust `sha2` crate (WASM) - [FIPS 180-4](https://doi.org/10.6028/NIST.FIPS.180-4)
+- **Ed25519**: `@onoal/oid-core` via `@noble/curves` - [RFC 8032](https://www.rfc-editor.org/rfc/rfc8032)
+- **JCS Canonicalization**: Custom Rust implementation - [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785)
+
+### 📢 Vulnerability Disclosure
+
+We take security seriously. If you discover a vulnerability:
+
+1. **DO NOT** open a public GitHub issue
+2. **Email** [security@onoal.org](mailto:security@onoal.org) with details
+3. **Include** steps to reproduce, impact assessment, and suggested fixes
+4. **Allow** 90 days for coordinated disclosure
+
+We will acknowledge receipt within 48 hours and provide status updates.
 
 ---
 
